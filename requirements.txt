@@ -1,2 +1,3 @@
 streamlit
 crewai>=0.80.0
+groq
