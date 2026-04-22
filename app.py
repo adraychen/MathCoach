@@ -36,7 +36,7 @@ else:
     # 4. Web Interface
     with st.form("chat_form"):
         user_input = st.text_input("Enter your math question:")
-        submitted = st.form_submit_with_button("Get a Hint")
+        submitted = st.form_submit_button("Get a Hint")
 
         if submitted and user_input:
             with st.spinner("Thinking of a good hint..."):
@@ -44,4 +44,4 @@ else:
                 crew = Crew(agents=[tutor_agent], tasks=[task])
                 response = crew.kickoff()
                 st.write("### Tutor's Hint:")
-                st.info(response)
+                st.info(response.raw)
