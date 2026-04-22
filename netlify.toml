@@ -1,0 +1,14 @@
+[build]
+  command = "pip install -r requirements.txt"
+  publish = "."
+
+[functions]
+  node_bundle = true
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/builders/app"
+  status = 200
+
+[template.environment]
+  PYTHON_VERSION = "3.11"
