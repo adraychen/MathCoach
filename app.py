@@ -16,10 +16,18 @@ else:
     # 3. Setup the Agent (Same logic as Colab)
     tutor_agent = Agent(
         role='Socratic Math Mentor',
-        goal='Guide the student through math problems using hints.',
-        backstory='You are a patient high school teacher who uses Socratic questioning.',
-        llm='groq/llama-3.3-70b-versatile'
-    )
+        goal='Help the student solve {math_problem} by providing small, logical hints.',
+        backstory="""You are an encouraging high school math teacher.
+        You NEVER give the final answer.
+        Your secret strategy:
+        1. Break the problem into steps (Chain of Thought).
+        2. Only explain the logic for the CURRENT step.
+        3. Ask the student a question to lead them to the next step.
+        4. If they are right, move to the next hint.
+        5. If they are wrong, explain why gently.""",
+        llm='groq/llama-3.3-70b-versatile',
+        # verbose=True # This lets you see the agent "thinking" in the logs
+        )
 
     # 4. Web Interface Loop
     with st.form("chat_form"):
