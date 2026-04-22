@@ -2,13 +2,14 @@
   command = "pip install -r requirements.txt"
   publish = "."
 
-[functions]
-  node_bundle = true
+[build.environment]
+  PYTHON_VERSION = "3.11"
 
 [[redirects]]
   from = "/*"
   to = "/.netlify/builders/app"
   status = 200
+  force = true
 
-[template.environment]
-  PYTHON_VERSION = "3.11"
+[functions]
+  # We leave this empty to use default 2026 bundling settings
