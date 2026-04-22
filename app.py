@@ -7,13 +7,17 @@ st.set_page_config(page_title="Socratic Math Coach", page_icon="🎓")
 st.title("🎓 Mr. Ray's Socratic Math Coach")
 st.markdown("I'll help you solve it, but I won't give you the answer! 😉")
 
-# 2. Get API Key from Netlify Environment Variables
-groq_key = os.getenv("GROQ_API_KEY")
+# 2. Get API Key from Secrets (Streamlit Cloud uses st.secrets)
+# This falls back to environment variables for local testing
+groq_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
 
 if not groq_key:
-    st.error("API Key missing! Please set GROQ_API_KEY in Netlify settings.")
+    st.error("API Key missing! Please set GROQ_API_KEY in Streamlit Secrets.")
 else:
-    # 3. Setup the Agent (Same logic as Colab)
+    # Set the environment variable for CrewAI/LiteLLM to pick up
+    os.environ["GROQ_API_KEY"] = groq_key
+
+    # 3. Setup the Agent
     tutor_agent = Agent(
         role='Socratic Math Mentor',
         goal='Help the student solve {math_problem} by providing small, logical hints.',
@@ -29,14 +33,14 @@ else:
         # verbose=True # This lets you see the agent "thinking" in the logs
         )
 
-    # 4. Web Interface Loop
+    # 4. Web Interface
     with st.form("chat_form"):
         user_input = st.text_input("Enter your math question:")
         submitted = st.form_submit_with_button("Get a Hint")
 
         if submitted and user_input:
             with st.spinner("Thinking of a good hint..."):
-                task = Task(description=f"Hint for: {user_input}", agent=tutor_agent)
+                task = Task(description=f"Provide a Socratic hint for this math problem: {user_input}", agent=tutor_agent)
                 crew = Crew(agents=[tutor_agent], tasks=[task])
                 response = crew.kickoff()
                 st.write("### Tutor's Hint:")
