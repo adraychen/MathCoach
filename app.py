@@ -4,7 +4,7 @@ from crewai import Agent, Task, Crew, Process
 
 # 1. Page Config
 st.set_page_config(page_title="Socratic Math Coach", page_icon="🎓")
-st.title("🎓 Mr. Ray's Socratic Math Coach")
+st.title("🎓 Math Buddy")
 st.caption("I'll help you solve it — but I won't give you the answer! 😉")
 
 # 2. API Key
