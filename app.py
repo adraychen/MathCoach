@@ -1,24 +1,24 @@
-import streamlit as st
-from crewai import Agent, Task, Crew
 import os
+import streamlit as st
+from crewai import Agent, Task, Crew, Process
 
 # 1. Page Config
 st.set_page_config(page_title="Socratic Math Coach", page_icon="🎓")
 st.title("🎓 Mr. Ray's Socratic Math Coach")
-st.markdown("I'll help you solve it, but I won't give you the answer! 😉")
+st.caption("I'll help you solve it — but I won't give you the answer! 😉")
 
-# 2. Get API Key from Secrets (Streamlit Cloud uses st.secrets)
-# This falls back to environment variables for local testing
+# 2. API Key
 groq_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
-
 if not groq_key:
     st.error("API Key missing! Please set GROQ_API_KEY in Streamlit Secrets.")
-else:
-    # Set the environment variable for CrewAI/LiteLLM to pick up
-    os.environ["GROQ_API_KEY"] = groq_key
+    st.stop()
 
-    # 3. Setup the Agent
-    tutor_agent = Agent(
+os.environ["GROQ_API_KEY"] = groq_key
+
+# 3. Define the Agent (created once, cached for the session)
+@st.cache_resource
+def get_agent():
+    return Agent(
         role='Socratic Math Mentor',
         goal='Help the student solve {math_problem} by providing small, logical hints.',
         backstory="""You are an encouraging high school math teacher.
@@ -30,18 +30,46 @@ else:
         4. If they are right, move to the next hint.
         5. If they are wrong, explain why gently.""",
         llm='groq/llama-3.3-70b-versatile',
-        # verbose=True # This lets you see the agent "thinking" in the logs
-        )
+        verbose=False,
+    )
 
-    # 4. Web Interface
-    with st.form("chat_form"):
-        user_input = st.text_input("Enter your math question:")
-        submitted = st.form_submit_button("Get a Hint")
+def run_tutor(problem: str) -> str:
+    agent = get_agent()
+    task = Task(
+        description=f"Provide a Socratic hint for this problem: {problem}",
+        expected_output="A friendly hint or guiding question that doesn't reveal the final answer.",
+        agent=agent,
+    )
+    crew = Crew(
+        agents=[agent],
+        tasks=[task],
+        process=Process.sequential,
+    )
+    result = crew.kickoff()
+    return result.raw
 
-        if submitted and user_input:
-            with st.spinner("Thinking of a good hint..."):
-                task = Task(description=f"Provide a Socratic hint for this math problem: {user_input}", agent=tutor_agent)
-                crew = Crew(agents=[tutor_agent], tasks=[task])
-                response = crew.kickoff()
-                st.write("### Tutor's Hint:")
-                st.info(response.raw)
+# 4. Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "assistant", "content": "Hi! Give me a math problem and I'll guide you through it step by step. What are you working on?"}
+    ]
+
+# 5. Render chat history
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# 6. Handle new input
+if user_input := st.chat_input("Type your math problem or answer here..."):
+    # Show student message
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    # Get tutor response
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking of a good hint..."):
+            response = run_tutor(user_input)
+        st.markdown(response)
+
+    st.session_state.messages.append({"role": "assistant", "content": response})
