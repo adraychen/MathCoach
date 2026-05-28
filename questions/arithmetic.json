@@ -1,0 +1,67 @@
+[
+  {
+    "id": "A001",
+    "topic": "Factors and Multiples",
+    "difficulty": "Part A",
+    "question": "What is the greatest multiple of 4 less than 100?",
+    "options": {
+      "A": "92",
+      "B": "96",
+      "C": "98",
+      "D": "100",
+      "E": "94"
+    },
+    "correct_answer": "B",
+    "solution_outline": [
+      "Find multiples of 4 near 100",
+      "100 is not less than 100",
+      "96 is the next multiple"
+    ],
+    "common_mistakes": [
+      "Choosing 100 because it is a multiple of 4"
+    ]
+  },
+  {
+    "id": "A002",
+    "topic": "Ordering Numbers",
+    "difficulty": "Part A",
+    "question": "Arrange 1000, 10, 100, 1, and 10000 from largest to smallest. Which number is in the middle?",
+    "options": {
+      "A": "1",
+      "B": "10",
+      "C": "100",
+      "D": "1000",
+      "E": "10000"
+    },
+    "correct_answer": "C",
+    "solution_outline": [
+      "Order the numbers from largest to smallest",
+      "10000 > 1000 > 100 > 10 > 1",
+      "The middle number is 100"
+    ],
+    "common_mistakes": [
+      "Confusing place value"
+    ]
+  },
+  {
+    "id": "A003",
+    "topic": "Prime Numbers",
+    "difficulty": "Part A",
+    "question": "Which of the following numbers is prime?",
+    "options": {
+      "A": "21",
+      "B": "39",
+      "C": "41",
+      "D": "51",
+      "E": "57"
+    },
+    "correct_answer": "C",
+    "solution_outline": [
+      "Test divisibility by 2, 3, 5, and 7",
+      "41 is only divisible by 1 and 41"
+    ],
+    "common_mistakes": [
+      "Not checking divisibility by 3"
+    ]
+  }
+]
