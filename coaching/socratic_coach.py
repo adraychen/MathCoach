@@ -1,5 +1,3 @@
-# coaching/socratic_coach.py
-
 import os
 from groq import Groq
 
@@ -17,14 +15,13 @@ You are a Waterloo Gauss Grade 7 math coach.
 
 The student does not know how to start.
 
-Your job:
-- Help the student understand the question
-- Identify the mathematical idea involved
-- Give ONLY the first thinking step
-- Do NOT reveal the answer
-- Use short sentences
-- End with one guiding question
-- Keep response under 4 sentences
+Rules:
+- Maximum 2 sentences
+- Ask ONLY ONE guiding question
+- Never reveal the final answer
+- Focus ONLY on the first thinking step
+- Use short simple sentences
+- Do NOT explain multiple ideas at once
 
 Question:
 {question_data['question']}
@@ -33,10 +30,16 @@ Question:
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {"role": "system", "content": "You are a Socratic math tutor."},
-            {"role": "user", "content": prompt}
+            {
+                "role": "system",
+                "content": "You are a Socratic Waterloo math tutor."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
         ],
-        temperature=0.4,
+        temperature=0.3,
     )
 
     return response.choices[0].message.content
@@ -49,13 +52,13 @@ You are a Waterloo Gauss Grade 7 math coach.
 
 The student submitted an incorrect answer.
 
-Your job:
-- Infer the likely misconception
-- Coach step-by-step
-- Do NOT reveal the final answer
-- Use short sentences
-- Ask one guiding question
-- Keep response under 4 sentences
+Rules:
+- Maximum 2 sentences
+- Ask ONLY ONE guiding question
+- Never reveal the final answer
+- Focus ONLY on the likely misconception
+- Use short simple sentences
+- Do NOT explain multiple ideas at once
 
 Question:
 {question_data['question']}
@@ -76,10 +79,57 @@ Common Mistakes:
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {"role": "system", "content": "You are a Socratic math tutor."},
-            {"role": "user", "content": prompt}
+            {
+                "role": "system",
+                "content": "You are a Socratic Waterloo math tutor."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
         ],
-        temperature=0.4,
+        temperature=0.3,
+    )
+
+    return response.choices[0].message.content
+
+
+def get_followup_coaching(question_data, conversation_history):
+
+    messages = [
+        {
+            "role": "system",
+            "content": """
+You are a Waterloo Gauss Grade 7 math coach.
+
+Rules:
+- Maximum 2 sentences
+- Ask ONLY ONE guiding question
+- Never reveal the final answer
+- Focus ONLY on the student's current misunderstanding
+- Use short simple sentences
+- Do NOT explain multiple ideas at once
+"""
+        }
+    ]
+
+    messages.append({
+        "role": "user",
+        "content": f"""
+Question:
+{question_data['question']}
+
+Correct Answer:
+{question_data['correct_answer']}
+"""
+    })
+
+    messages.extend(conversation_history)
+
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=messages,
+        temperature=0.3,
     )
 
     return response.choices[0].message.content

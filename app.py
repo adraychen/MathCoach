@@ -8,7 +8,8 @@ from utils.scoring import calculate_score
 
 from coaching.socratic_coach import (
     get_starting_coaching,
-    get_misconception_coaching
+    get_misconception_coaching,
+    get_followup_coaching
 )
 
 # ---------------------------------------------------
@@ -27,9 +28,11 @@ st.set_page_config(
 
 QUESTIONS_PATH = Path("questions/arithmetic.json")
 
+
 def load_questions():
     with open(QUESTIONS_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
+
 
 questions = load_questions()
 
@@ -43,7 +46,7 @@ defaults = {
     "current_index": 0,
     "answers": {},
     "question_state": {},
-    "chat_history": [],
+    "coaching_history": {},
 }
 
 for key, value in defaults.items():
@@ -97,8 +100,10 @@ with st.sidebar:
         )
 
         question_state = {}
+        coaching_history = {}
 
         for q in quiz_questions:
+
             question_state[q["id"]] = {
                 "start_time": time.time(),
                 "time_to_correct": None,
@@ -106,11 +111,13 @@ with st.sidebar:
                 "attempts": 0
             }
 
+            coaching_history[q["id"]] = []
+
         st.session_state.quiz_questions = quiz_questions
         st.session_state.current_index = 0
         st.session_state.answers = {}
         st.session_state.question_state = question_state
-        st.session_state.chat_history = []
+        st.session_state.coaching_history = coaching_history
         st.session_state.quiz_started = True
 
         st.rerun()
@@ -149,7 +156,7 @@ if st.session_state.quiz_started:
     st.session_state.answers[qid] = selected
 
     # ---------------------------------------------------
-    # BUTTONS
+    # ACTION BUTTONS
     # ---------------------------------------------------
 
     col1, col2 = st.columns(2)
@@ -160,7 +167,7 @@ if st.session_state.quiz_started:
 
             coaching = get_starting_coaching(question)
 
-            st.session_state.chat_history.append({
+            st.session_state.coaching_history[qid].append({
                 "role": "assistant",
                 "content": coaching
             })
@@ -173,9 +180,9 @@ if st.session_state.quiz_started:
 
             if selected is None:
 
-                st.session_state.chat_history.append({
+                st.session_state.coaching_history[qid].append({
                     "role": "assistant",
-                    "content": "Choose an answer first before submitting."
+                    "content": "Choose an answer before submitting."
                 })
 
             else:
@@ -195,9 +202,9 @@ if st.session_state.quiz_started:
 
                     st.session_state.question_state[qid]["is_correct"] = True
 
-                    st.session_state.chat_history.append({
+                    st.session_state.coaching_history[qid].append({
                         "role": "assistant",
-                        "content": "Good job. You got the correct answer."
+                        "content": "Correct. Moving to the next question."
                     })
 
                     if current_index < len(quiz_questions) - 1:
@@ -213,7 +220,7 @@ if st.session_state.quiz_started:
                         selected
                     )
 
-                    st.session_state.chat_history.append({
+                    st.session_state.coaching_history[qid].append({
                         "role": "assistant",
                         "content": coaching
                     })
@@ -221,17 +228,44 @@ if st.session_state.quiz_started:
                     st.rerun()
 
     # ---------------------------------------------------
-    # CHAT PANEL
+    # COACHING PANEL
     # ---------------------------------------------------
 
     st.divider()
 
     st.subheader("Coaching")
 
-    for msg in st.session_state.chat_history:
+    history = st.session_state.coaching_history[qid]
+
+    for msg in history:
 
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
+
+    student_message = st.chat_input(
+        "Ask a question or explain your thinking..."
+    )
+
+    if student_message:
+
+        st.session_state.coaching_history[qid].append({
+            "role": "user",
+            "content": student_message
+        })
+
+        history = st.session_state.coaching_history[qid]
+
+        coaching = get_followup_coaching(
+            question_data=question,
+            conversation_history=history
+        )
+
+        st.session_state.coaching_history[qid].append({
+            "role": "assistant",
+            "content": coaching
+        })
+
+        st.rerun()
 
     # ---------------------------------------------------
     # NAVIGATION
@@ -281,7 +315,7 @@ if st.session_state.quiz_started:
 
         st.metric("Score", results["score"])
 
-        st.subheader("Timing")
+        st.subheader("Time to First Correct Submission")
 
         for q in quiz_questions:
 
@@ -290,3 +324,36 @@ if st.session_state.quiz_started:
             st.write(
                 f"{q['id']} — {qstate['time_to_correct']} seconds"
             )
+
+        if st.button("Start New Quiz"):
+
+            st.session_state.quiz_started = False
+            st.session_state.quiz_questions = []
+            st.session_state.current_index = 0
+            st.session_state.answers = {}
+            st.session_state.question_state = {}
+            st.session_state.coaching_history = {}
+
+            st.rerun()
+
+# ---------------------------------------------------
+# HOME SCREEN
+# ---------------------------------------------------
+
+if not st.session_state.quiz_started:
+
+    st.markdown("""
+    ## Welcome
+
+    Practice Waterloo Gauss Grade 7 arithmetic
+    and number sense questions.
+
+    Features:
+    - Waterloo-style multiple choice
+    - Socratic AI coaching
+    - Step-by-step reasoning
+    - Time tracking
+    - Progressive difficulty
+
+    Choose settings in the sidebar to begin.
+    """)

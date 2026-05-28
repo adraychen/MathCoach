@@ -35,7 +35,6 @@
     },
     "correct_answer": "C",
     "solution_outline": [
-      "Order the numbers from largest to smallest",
       "10000 > 1000 > 100 > 10 > 1",
       "The middle number is 100"
     ],
@@ -57,11 +56,111 @@
     },
     "correct_answer": "C",
     "solution_outline": [
-      "Test divisibility by 2, 3, 5, and 7",
-      "41 is only divisible by 1 and 41"
+      "Check divisibility by 2, 3, 5, and 7"
     ],
     "common_mistakes": [
       "Not checking divisibility by 3"
+    ]
+  },
+  {
+    "id": "A004",
+    "topic": "Fractions Decimals Percents",
+    "difficulty": "Part A",
+    "question": "Which of the following numbers is closest to 0?",
+    "options": {
+      "A": "-0.2",
+      "B": "0.5",
+      "C": "-0.02",
+      "D": "0.1",
+      "E": "-1"
+    },
+    "correct_answer": "C",
+    "solution_outline": [
+      "Compare distances from 0"
+    ],
+    "common_mistakes": [
+      "Choosing the smallest number instead of closest to zero"
+    ]
+  },
+  {
+    "id": "A005",
+    "topic": "Prime Numbers",
+    "difficulty": "Part A",
+    "question": "What is the sum of the prime factors of 21?",
+    "options": {
+      "A": "3",
+      "B": "7",
+      "C": "10",
+      "D": "21",
+      "E": "24"
+    },
+    "correct_answer": "C",
+    "solution_outline": [
+      "21 = 3 × 7",
+      "3 + 7 = 10"
+    ],
+    "common_mistakes": [
+      "Adding all factors instead of prime factors"
+    ]
+  },
+  {
+    "id": "A006",
+    "topic": "Consecutive Integers",
+    "difficulty": "Part A",
+    "question": "Three consecutive integers have a sum of 24. What is the middle integer?",
+    "options": {
+      "A": "6",
+      "B": "7",
+      "C": "8",
+      "D": "9",
+      "E": "10"
+    },
+    "correct_answer": "C",
+    "solution_outline": [
+      "Middle number equals average"
+    ],
+    "common_mistakes": [
+      "Forgetting consecutive integers are evenly spaced"
+    ]
+  },
+  {
+    "id": "A007",
+    "topic": "Factors and Multiples",
+    "difficulty": "Part A",
+    "question": "How many positive factors does 12 have?",
+    "options": {
+      "A": "4",
+      "B": "5",
+      "C": "6",
+      "D": "7",
+      "E": "8"
+    },
+    "correct_answer": "C",
+    "solution_outline": [
+      "Factors are 1, 2, 3, 4, 6, 12"
+    ],
+    "common_mistakes": [
+      "Missing a factor"
+    ]
+  },
+  {
+    "id": "A008",
+    "topic": "Special Number Properties",
+    "difficulty": "Part A",
+    "question": "Which of the following is a palindrome?",
+    "options": {
+      "A": "123",
+      "B": "454",
+      "C": "678",
+      "D": "980",
+      "E": "234"
+    },
+    "correct_answer": "B",
+    "solution_outline": [
+      "A palindrome reads the same forwards and backwards"
+    ],
+    "common_mistakes": [
+      "Not checking reverse order"
     ]
   }
 ]
