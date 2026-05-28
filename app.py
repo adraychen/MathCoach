@@ -1,9 +1,15 @@
 import streamlit as st
 import json
+import time
 from pathlib import Path
 
 from utils.quiz_manager import generate_quiz
 from utils.scoring import calculate_score
+
+from coaching.socratic_coach import (
+    get_starting_coaching,
+    get_misconception_coaching
+)
 
 # ---------------------------------------------------
 # PAGE CONFIG
@@ -31,20 +37,18 @@ questions = load_questions()
 # SESSION STATE
 # ---------------------------------------------------
 
-if "quiz_started" not in st.session_state:
-    st.session_state.quiz_started = False
+defaults = {
+    "quiz_started": False,
+    "quiz_questions": [],
+    "current_index": 0,
+    "answers": {},
+    "question_state": {},
+    "chat_history": [],
+}
 
-if "quiz_submitted" not in st.session_state:
-    st.session_state.quiz_submitted = False
-
-if "quiz_questions" not in st.session_state:
-    st.session_state.quiz_questions = []
-
-if "current_index" not in st.session_state:
-    st.session_state.current_index = 0
-
-if "answers" not in st.session_state:
-    st.session_state.answers = {}
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 # ---------------------------------------------------
 # HEADER
@@ -92,11 +96,22 @@ with st.sidebar:
             difficulty
         )
 
+        question_state = {}
+
+        for q in quiz_questions:
+            question_state[q["id"]] = {
+                "start_time": time.time(),
+                "time_to_correct": None,
+                "is_correct": False,
+                "attempts": 0
+            }
+
         st.session_state.quiz_questions = quiz_questions
         st.session_state.current_index = 0
         st.session_state.answers = {}
+        st.session_state.question_state = question_state
+        st.session_state.chat_history = []
         st.session_state.quiz_started = True
-        st.session_state.quiz_submitted = False
 
         st.rerun()
 
@@ -104,12 +119,14 @@ with st.sidebar:
 # QUIZ SCREEN
 # ---------------------------------------------------
 
-if st.session_state.quiz_started and not st.session_state.quiz_submitted:
+if st.session_state.quiz_started:
 
     quiz_questions = st.session_state.quiz_questions
     current_index = st.session_state.current_index
 
     question = quiz_questions[current_index]
+
+    qid = question["id"]
 
     st.divider()
 
@@ -118,8 +135,6 @@ if st.session_state.quiz_started and not st.session_state.quiz_submitted:
     )
 
     st.write(question["question"])
-
-    qid = question["id"]
 
     previous_answer = st.session_state.answers.get(qid)
 
@@ -131,95 +146,147 @@ if st.session_state.quiz_started and not st.session_state.quiz_submitted:
         key=f"radio_{qid}"
     )
 
-    # Save answer
     st.session_state.answers[qid] = selected
 
-    st.info(
-        f"Topic: {question['topic']} | Difficulty: {question['difficulty']}"
-    )
-
     # ---------------------------------------------------
-    # NAVIGATION BUTTONS
+    # BUTTONS
     # ---------------------------------------------------
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
 
-        if current_index > 0:
-            if st.button("⬅ Previous"):
-                st.session_state.current_index -= 1
-                st.rerun()
+        if st.button("Need Coaching"):
+
+            coaching = get_starting_coaching(question)
+
+            st.session_state.chat_history.append({
+                "role": "assistant",
+                "content": coaching
+            })
+
+            st.rerun()
 
     with col2:
 
-        if current_index < len(quiz_questions) - 1:
-            if st.button("Next ➡"):
-                st.session_state.current_index += 1
-                st.rerun()
+        if st.button("Submit"):
 
-    with col3:
+            if selected is None:
 
-        if current_index == len(quiz_questions) - 1:
-            if st.button("Submit Quiz"):
+                st.session_state.chat_history.append({
+                    "role": "assistant",
+                    "content": "Choose an answer first before submitting."
+                })
 
-                st.session_state.quiz_submitted = True
-                st.rerun()
+            else:
 
-# ---------------------------------------------------
-# RESULTS SCREEN
-# ---------------------------------------------------
+                st.session_state.question_state[qid]["attempts"] += 1
 
-if st.session_state.quiz_submitted:
+                if selected == question["correct_answer"]:
 
-    results = calculate_score(
-        st.session_state.quiz_questions,
-        st.session_state.answers
-    )
+                    if st.session_state.question_state[qid]["time_to_correct"] is None:
+
+                        elapsed = (
+                            time.time()
+                            - st.session_state.question_state[qid]["start_time"]
+                        )
+
+                        st.session_state.question_state[qid]["time_to_correct"] = round(elapsed, 1)
+
+                    st.session_state.question_state[qid]["is_correct"] = True
+
+                    st.session_state.chat_history.append({
+                        "role": "assistant",
+                        "content": "Good job. You got the correct answer."
+                    })
+
+                    if current_index < len(quiz_questions) - 1:
+
+                        st.session_state.current_index += 1
+
+                    st.rerun()
+
+                else:
+
+                    coaching = get_misconception_coaching(
+                        question,
+                        selected
+                    )
+
+                    st.session_state.chat_history.append({
+                        "role": "assistant",
+                        "content": coaching
+                    })
+
+                    st.rerun()
+
+    # ---------------------------------------------------
+    # CHAT PANEL
+    # ---------------------------------------------------
 
     st.divider()
 
-    st.header("📊 Quiz Results")
+    st.subheader("Coaching")
 
-    st.metric("Final Score", results["score"])
+    for msg in st.session_state.chat_history:
 
-    col1, col2, col3 = st.columns(3)
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-    col1.metric("Correct", results["correct"])
-    col2.metric("Incorrect", results["incorrect"])
-    col3.metric("Blank", results["blank"])
+    # ---------------------------------------------------
+    # NAVIGATION
+    # ---------------------------------------------------
 
-    st.info(
-        f"Blank Question Bonus: {results['blank_bonus']} points"
+    st.divider()
+
+    nav1, nav2 = st.columns(2)
+
+    with nav1:
+
+        if current_index > 0:
+
+            if st.button("⬅ Previous"):
+
+                st.session_state.current_index -= 1
+                st.rerun()
+
+    with nav2:
+
+        if current_index < len(quiz_questions) - 1:
+
+            if st.button("Next ➡"):
+
+                st.session_state.current_index += 1
+                st.rerun()
+
+    # ---------------------------------------------------
+    # RESULTS
+    # ---------------------------------------------------
+
+    completed = all(
+        st.session_state.question_state[q["id"]]["is_correct"]
+        for q in quiz_questions
     )
 
-    if st.button("Start New Quiz"):
+    if completed:
 
-        st.session_state.quiz_started = False
-        st.session_state.quiz_submitted = False
-        st.session_state.quiz_questions = []
-        st.session_state.answers = {}
-        st.session_state.current_index = 0
+        st.divider()
 
-        st.rerun()
+        st.header("📊 Results")
 
-# ---------------------------------------------------
-# HOME SCREEN
-# ---------------------------------------------------
+        results = calculate_score(
+            quiz_questions,
+            st.session_state.answers
+        )
 
-if not st.session_state.quiz_started:
+        st.metric("Score", results["score"])
 
-    st.markdown("""
-    ## Welcome
+        st.subheader("Timing")
 
-    Practice Waterloo Gauss Grade 7 arithmetic
-    and number sense questions.
+        for q in quiz_questions:
 
-    Features:
-    - Multiple-choice practice
-    - Waterloo scoring rules
-    - Contest-style quiz flow
-    - Progressive difficulty
+            qstate = st.session_state.question_state[q["id"]]
 
-    Choose settings in the sidebar to begin.
-    """)
+            st.write(
+                f"{q['id']} — {qstate['time_to_correct']} seconds"
+            )
