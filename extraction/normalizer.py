@@ -110,20 +110,24 @@ def classify_question(question: dict, paper_info: dict = None) -> dict:
     # Determine difficulty from section/question number
     difficulty = "part_a"
     if paper_info:
-        sections = paper_info.get("sections", [])
+        sections = paper_info.get("sections", []) or []
         for section in sections:
             q_range = section.get("questions", "")
-            if "-" in q_range:
-                start, end = map(int, q_range.split("-"))
-                if start <= question_number <= end:
-                    name = section.get("name", "").lower()
-                    if "a" in name:
-                        difficulty = "part_a"
-                    elif "b" in name:
-                        difficulty = "part_b"
-                    elif "c" in name:
-                        difficulty = "part_c"
-                    break
+            # Ensure q_range is a string
+            if q_range and isinstance(q_range, str) and "-" in q_range:
+                try:
+                    start, end = map(int, q_range.split("-"))
+                    if start <= question_number <= end:
+                        name = section.get("name", "").lower()
+                        if "a" in name:
+                            difficulty = "part_a"
+                        elif "b" in name:
+                            difficulty = "part_b"
+                        elif "c" in name:
+                            difficulty = "part_c"
+                        break
+                except ValueError:
+                    continue
 
     prompt = f"""
 Classify this math competition question.
