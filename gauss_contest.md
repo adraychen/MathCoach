@@ -1,233 +1,97 @@
-# Math Coach – Waterloo Gauss Contest Module
+# Math Coach – Contest Knowledge Extraction & Blueprint Development Manual
 
-## Project Overview
+## Purpose
 
-Math Coach is an AI-powered learning and practice platform that helps students prepare for mathematics contests through:
+This document defines the official workflow for adding new contest programs, new contest papers, new topics, new archetypes, and new blueprints to the Math Coach platform.
 
-* Adaptive question generation
-* Socratic coaching
-* Performance tracking
-* Contest simulation
-* Weak-area identification
-* Reasoning-focused learning
-
-The first supported contest is:
-
-**Waterloo Gauss Contest (Grade 7)**
-
-The system is designed to support future programs such as:
-
-* Waterloo Pascal
-* Waterloo Cayley
-* Waterloo Fermat
-* AMC
-* UKMT
-* Other mathematics competitions
+This document is the operational guide for maintaining and expanding the educational knowledge base.
 
 ---
 
-# Educational Philosophy
+# Core Philosophy
 
-Traditional quiz systems focus on:
+Math Coach does not generate questions directly from past papers.
 
-* Question
-* Answer
-
-Math Coach focuses on:
-
-* Reasoning
-* Misconceptions
-* Coaching
-* Pattern recognition
-
-The objective is to help students develop contest problem-solving skills rather than memorize answers.
-
----
-
-# Current Architecture
+Math Coach uses a layered educational architecture:
 
 ```text
-Program
+Contest Program
     ↓
-Primary Topic
+Topic Taxonomy
     ↓
-Secondary Topic
+Question Classification
     ↓
-Archetype
+Reasoning Archetypes
     ↓
-Blueprint
+Blueprint Families
     ↓
-Generated Question
-    ↓
-Student Response
+Question Generation
     ↓
 Socratic Coaching
 ```
 
----
-
-# Waterloo Gauss Topic Taxonomy
-
-The Waterloo Gauss Contest uses the following primary topics:
-
-1. Algebra and Equations
-2. Counting and Probability
-3. Geometry and Measurement
-4. Number Sense
-5. Data Analysis
-6. Other
-
-Each primary topic contains multiple secondary topics.
+Questions are generated from blueprints, not from copied contest questions.
 
 ---
 
-# Educational Ontology
-
-The system uses two independent classification systems.
-
-## Curriculum Taxonomy
-
-Used for:
-
-* Student navigation
-* Topic practice
-* Curriculum alignment
-* Reporting
-
-Structure:
-
-```text
-Primary Topic
-    ↓
-Secondary Topic
-```
-
-Example:
-
-```text
-Number Sense
-    ↓
-Prime Numbers
-```
-
----
-
-## Reasoning Taxonomy (Archetypes)
-
-Used for:
-
-* AI generation
-* Coaching
-* Misconception detection
-* Adaptive learning
-
-Current archetypes:
-
-### Integer Deconstruction
-
-Reasoning involving:
-
-* Prime factorization
-* Divisibility
-* GCF
-* LCM
-* Factor counting
-
-### Periodic State Prediction
-
-Reasoning involving:
-
-* Repeating sequences
-* Cycles
-* Modular thinking
-
-### Dynamic State Transformation
-
-Reasoning involving:
-
-* Percentages
-* Ratios
-* Rates
-* State changes
-
-### Combinatorial Probability
-
-Reasoning involving:
-
-* Outcome spaces
-* Counting methods
-* Probability
-
-### Exhaustive Case Analysis
-
-Reasoning involving:
-
-* Systematic listing
-* Logical constraints
-* Enumeration
-
-### Arithmetic Cryptography
-
-Reasoning involving:
-
-* Hidden digits
-* Digit substitution
-* Operational constraints
-
-### Geometric Relation Scaling
-
-Reasoning involving:
-
-* Perimeter
-* Area
-* Volume
-* Scaling relationships
-
-### Quantitative Anchoring
-
-Reasoning involving:
-
-* Ordering
-* Comparing values
-* Distance from benchmarks
-* Number sense estimation
-
----
-
-# Database Tables
-
-Current tables:
-
-## mathcoach_archetypes
-
-Stores reasoning archetypes.
-
-Purpose:
-
-* Educational ontology
-* AI generation
-* Coaching
-
----
+# Current Database Structure
 
 ## mathcoach_primary_topics
 
-Stores Waterloo primary topics.
+Stores official contest topic categories.
+
+Example:
+
+* Number Sense
+* Counting and Probability
+* Geometry and Measurement
+* Algebra and Equations
+* Data Analysis
+* Other
 
 ---
 
 ## mathcoach_secondary_topics
 
-Stores Waterloo secondary topics.
+Stores contest-specific topic breakdowns.
+
+Example:
+
+* Prime Numbers
+* Divisibility
+* Percentages
+* Probability
+* Counting
+* Area
+
+---
+
+## mathcoach_archetypes
+
+Stores reasoning archetypes.
+
+Examples:
+
+* Integer Deconstruction
+* Dynamic State Transformation
+* Periodic State Prediction
+* Combinatorial Probability
+* Arithmetic Cryptography
+* Geometric Relation Scaling
+* Quantitative Anchoring
+* Exhaustive Case Analysis
 
 ---
 
 ## mathcoach_question_metadata
 
-Stores classified Waterloo questions.
+Stores classified contest questions.
 
-Fields include:
+Each row represents one contest question.
 
+Fields:
+
+* Program
 * Year
 * Grade
 * Question Number
@@ -237,124 +101,236 @@ Fields include:
 * Archetype
 * Confidence
 
-Purpose:
-
-* Question classification
-* Ontology validation
-* Blueprint discovery
-
 ---
 
 ## mathcoach_question_blueprints
 
-Stores reusable question-generation blueprints.
+Stores reusable generation blueprints.
 
-Blueprints represent:
+Blueprints contain:
 
-* Reasoning patterns
+* Reasoning goals
 * Misconceptions
 * Coaching strategies
-* Generation templates
+* Generation patterns
+* Visual requirements
 
-Blueprints do NOT store actual questions.
+Blueprints do not contain actual questions.
 
 ---
 
-# Blueprint Philosophy
+# Workflow for Adding New Contest Papers
 
-A blueprint is:
+## Step 1 – Collect Source Material
 
-```text
-One reusable question family
-```
+Required:
 
-A blueprint is NOT:
+* Contest paper PDF
+* Official solutions (if available)
 
-```text
-One question
-```
+Store source files in project storage.
 
 Example:
 
-Blueprint:
-
-Prime Factor Reasoning
-
-Can generate:
-
-* Sum of prime factors
-* Product of prime factors
-* Count of prime factors
-* Prime-factor constraint questions
-
-while maintaining the same reasoning structure.
+```text
+Waterloo Gauss 2026
+Waterloo Gauss 2027
+```
 
 ---
 
-# Blueprint #1
+## Step 2 – Upload to NotebookLM
 
-## Prime Factor Reasoning
+Upload:
 
-### Primary Topic
+* Contest papers
+* Official solutions
+* Current archetype taxonomy
+* Current blueprint definitions
 
-Number Sense
-
-### Secondary Topic
-
-Prime Numbers
-
-### Archetype
-
-Integer Deconstruction
-
-### Reasoning Goal
-
-Students decompose a composite number into prime factors and use those prime factors to satisfy a secondary condition.
-
-### Common Misconceptions
-
-* Treating 1 as prime
-* Confusing factors with prime factors
-* Using composite factors
-* Prime misidentification
-* Ignoring parity properties
-
-### Coaching Entry
-
-"What are the smallest whole-number building blocks of this number?"
-
-### Visual Requirement
-
-None
+NotebookLM becomes the analysis engine.
 
 ---
 
-# Visual System Strategy
+# Workflow A – Question Classification
 
-The platform will support both:
+## Objective
 
-## Text-only Questions
+Classify every contest question.
 
-Examples:
+NotebookLM Output:
 
-* Prime numbers
-* Divisibility
-* Ratios
-* Percentages
-* Probability
+| year | grade | question_number | part | primary_topic | secondary_topic | archetype | confidence |
 
-## Visual Questions
+Store results in:
 
-Examples:
+```text
+mathcoach_question_metadata
+```
 
-* Geometry diagrams
-* Coordinate grids
-* Bar graphs
-* Number lines
-* Fraction area models
-* Balance scales
+---
 
-Visuals will be generated from structured specifications rather than stored images.
+## Human Validation
+
+Review:
+
+* Medium confidence
+* Low confidence
+* New reasoning patterns
+
+Correct errors before database insertion.
+
+---
+
+# Workflow B – Archetype Discovery
+
+## Objective
+
+Identify new reasoning patterns.
+
+Prompt NotebookLM:
+
+```text
+Identify recurring reasoning structures.
+```
+
+Questions:
+
+* Does a new archetype exist?
+* Is an existing archetype sufficient?
+
+If existing archetypes cover the questions:
+
+```text
+No new archetype required.
+```
+
+Otherwise:
+
+```text
+Create candidate archetype.
+```
+
+---
+
+## Archetype Approval Checklist
+
+Create a new archetype only if:
+
+* Reasoning process is unique.
+* Coaching strategy differs.
+* Misconceptions differ.
+* Generation pattern differs.
+
+Otherwise reuse an existing archetype.
+
+---
+
+# Workflow C – Topic Mapping
+
+## Objective
+
+Connect archetypes to curriculum topics.
+
+NotebookLM Output:
+
+| archetype | primary_topic | secondary_topic |
+
+Validate before acceptance.
+
+---
+
+# Workflow D – Blueprint Discovery
+
+## Objective
+
+Identify reusable question families.
+
+A blueprint represents:
+
+```text
+Same reasoning goal
+Same misconception pattern
+Same coaching entry
+Same generation pattern
+```
+
+A blueprint does NOT represent one question.
+
+---
+
+## Blueprint Discovery Prompt
+
+Use NotebookLM to identify:
+
+* Blueprint name
+* Reasoning goal
+* Common misconceptions
+* Coaching entry
+* Generation pattern
+* Difficulty drivers
+* Visual requirements
+
+---
+
+# Blueprint Approval Criteria
+
+A blueprint is approved when:
+
+AI can:
+
+* Generate questions
+* Generate distractors
+* Generate Socratic coaching
+* Identify visual requirements
+
+from the blueprint definition.
+
+---
+
+# Workflow E – Blueprint Validation
+
+## Objective
+
+Validate blueprint quality.
+
+For each blueprint:
+
+Generate:
+
+```text
+10 questions
+```
+
+Compare against source contest questions.
+
+Review:
+
+* Style similarity
+* Difficulty alignment
+* Reasoning alignment
+* Distractor quality
+* Coaching quality
+
+---
+
+## Validation Outcomes
+
+### Pass
+
+Blueprint stored as Approved.
+
+### Fail
+
+Blueprint refined and retested.
+
+---
+
+# Visual Question Workflow
+
+## Philosophy
+
+Visual questions are generated from specifications, not images.
 
 Example:
 
@@ -362,43 +338,114 @@ Example:
 {
   "type": "coordinate_grid",
   "points": [
-    {"label": "A", "x": 2, "y": 3}
+    {"label":"A","x":2,"y":3}
   ]
 }
 ```
 
-This allows unlimited generation and rendering.
+---
+
+## Supported Visual Types
+
+Current list:
+
+* none
+* coordinate_grid
+* geometry_diagram
+* bar_graph
+* line_graph
+* table
+* balance_scale
+* fraction_area
+* number_line
+* shape_pattern
+* net_3d
 
 ---
 
-# Current Development Status
+# Blueprint Creation Rules
 
-Completed:
+A new blueprint is required when:
 
-* Contest taxonomy design
-* Archetype taxonomy design
-* Question classification workflow
-* Supabase schema creation
-* Question metadata import
-* Blueprint table design
-* Blueprint #1 creation
+Any of the following changes:
 
-In Progress:
+* reasoning goal
+* misconception profile
+* coaching strategy
+* generation pattern
 
-* Blueprint discovery workflow
-* Blueprint validation workflow
-* Question generation engine design
+A new blueprint is NOT required when only:
 
-Future:
+* numbers change
+* wording changes
+* context changes
 
-* AI question generation
-* Visual generation system
-* Contest simulation mode
-* Adaptive learning engine
-* Student analytics dashboard
-* Multi-program support
-* Performance tracking
-* Weak-area recommendations
+---
 
+# How Many Blueprints Exist?
+
+The number is discovered from the data.
+
+Procedure:
+
+1. Classify questions.
+2. Group by topic + archetype.
+3. Analyze reasoning patterns.
+4. Split groups when generation patterns differ.
+5. Create blueprint families.
+
+Expected:
+
+```text
+80 Waterloo Gauss Arithmetic & Number Sense Questions
+→ approximately 20–30 blueprints
 ```
+
+Actual number determined by analysis.
+
+---
+
+# Human Review Policy
+
+NotebookLM may suggest:
+
+* archetypes
+* mappings
+* blueprints
+
+NotebookLM never writes directly to the database.
+
+Workflow:
+
+```text
+NotebookLM
+    ↓
+Human Review
+    ↓
+Supabase
 ```
+
+Human approval is mandatory.
+
+---
+
+# Future Expansion
+
+This workflow is reusable for:
+
+* Waterloo Pascal
+* Waterloo Cayley
+* Waterloo Fermat
+* AMC
+* UKMT
+* SAT Math
+
+No architectural changes required.
+
+Only:
+
+* new papers
+* new classifications
+* new blueprints
+
+are added.
