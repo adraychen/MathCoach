@@ -554,7 +554,7 @@ if st.session_state.quiz_started:
 elif st.session_state.app_mode == "extract":
 
     st.title("Question Extraction")
-    st.caption("Upload past papers and extract questions using Llama 3.2 90B Vision")
+    st.caption("Upload past papers and extract questions")
 
     # Progress indicator
     steps = ["upload", "parse", "classify", "review", "save"]
@@ -631,9 +631,12 @@ elif st.session_state.app_mode == "extract":
 
             if st.button("Analyze Structure", type="primary"):
 
-                with st.spinner("Using vision AI to analyze..."):
+                with st.spinner("Analyzing paper structure..."):
                     first_page = render_pdf_page_from_bytes(pdf_bytes, 1, dpi=100)
-                    paper_info = identify_paper_structure_from_image(first_page["image_base64"])
+                    paper_info = identify_paper_structure_from_image(
+                        first_page["image_base64"],
+                        page_text=first_page["text"]
+                    )
                     st.session_state.paper_info = paper_info
 
                 if paper_info.get("error"):
@@ -685,7 +688,8 @@ elif st.session_state.app_mode == "extract":
                     page_questions = parse_questions_from_image(
                         page_data["image_base64"],
                         page_num,
-                        source_info
+                        source_info,
+                        page_text=page_data["text"]
                     )
 
                     valid_questions = [q for q in page_questions if "error" not in q]

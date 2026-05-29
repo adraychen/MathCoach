@@ -9,207 +9,58 @@ from groq import Groq
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# Vision model for image-based extraction
-# Note: Using 11B as 90B may not be available on Groq yet
-VISION_MODEL = "llama-3.2-11b-vision-preview"
+# Vision models on Groq have been decommissioned
+# Falling back to text-based extraction
+USE_VISION = False
 
-# Text model for text-only tasks
+# Text model for all tasks
 TEXT_MODEL = "llama-3.3-70b-versatile"
 
 
 def parse_questions_from_image(
     image_base64: str,
     page_num: int,
-    source_info: str = ""
+    source_info: str = "",
+    page_text: str = ""
 ) -> list[dict]:
     """
-    Use vision model to parse questions from a PDF page image.
+    Parse questions from a PDF page.
+    Uses text extraction since Groq vision models are decommissioned.
 
     Args:
-        image_base64: Base64-encoded PNG image of the page
+        image_base64: Base64-encoded PNG image (kept for compatibility)
         page_num: Page number for reference
         source_info: Source information (e.g., "Waterloo Gauss 2023")
+        page_text: Extracted text from the page
 
     Returns:
-        List of parsed question dicts with:
-            - question_number
-            - question_text
-            - options (A-E)
-            - has_diagram
-            - diagram_description (if applicable)
+        List of parsed question dicts
     """
+    # Use text-based parsing
+    questions = parse_questions_from_text(page_text, source_info)
 
-    prompt = f"""You are a math competition paper parser. Extract all multiple-choice questions from this page image.
-
-Source: {source_info}
-Page: {page_num}
-
-For each question on this page, extract:
-1. question_number: The question number (1, 2, 3, etc.)
-2. question_text: The complete question stem. Preserve all mathematical notation.
-3. options: The answer choices as a dict with keys A, B, C, D, E
-4. has_diagram: true if the question includes a figure, graph, or diagram
-5. diagram_description: If has_diagram is true, describe the diagram in detail:
-   - For geometry: describe shapes, labels, measurements, angles
-   - For graphs: describe axes, scale, plotted points/lines, labels
-   - For tables: describe rows, columns, values
-   - For other figures: describe what is shown
-
-Important:
-- Extract EVERY question visible on this page
-- Preserve mathematical notation exactly (fractions, exponents, etc.)
-- For diagrams, be precise and detailed in your description
-- Include all labels, measurements, and values shown in diagrams
-- If a question continues from or to another page, note it
-
-Return a JSON array of question objects. Only return valid JSON, no other text.
-
-Return format:
-[
-  {{
-    "question_number": 1,
-    "question_text": "...",
-    "options": {{"A": "...", "B": "...", "C": "...", "D": "...", "E": "..."}},
-    "has_diagram": true,
-    "diagram_description": "A triangle ABC with right angle at B. Side AB = 3 cm, side BC = 4 cm. Angle A is marked."
-  }}
-]"""
-
-    try:
-        response = client.chat.completions.create(
-            model=VISION_MODEL,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{image_base64}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            temperature=0.1,
-            max_tokens=4096
-        )
-
-        content = response.choices[0].message.content
-
-        # Handle markdown code blocks
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0]
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0]
-
-        questions = json.loads(content)
-
-        # Add page number to each question
-        for q in questions:
+    # Add page number to each question
+    for q in questions:
+        if "error" not in q:
             q["source_page"] = page_num
 
-        return questions
-
-    except json.JSONDecodeError as e:
-        return [{
-            "error": f"Failed to parse JSON: {e}",
-            "raw_response": content,
-            "source_page": page_num
-        }]
-    except Exception as e:
-        return [{
-            "error": f"API Error: {str(e)}",
-            "source_page": page_num
-        }]
+    return questions
 
 
-def identify_paper_structure_from_image(image_base64: str) -> dict:
+def identify_paper_structure_from_image(image_base64: str, page_text: str = "") -> dict:
     """
-    Analyze the structure of a competition paper from the first page image.
+    Analyze the structure of a competition paper from the first page.
+    Uses text extraction since Groq vision models are decommissioned.
 
     Args:
-        image_base64: Base64-encoded PNG image of the first page
+        image_base64: Base64-encoded PNG image (kept for compatibility)
+        page_text: Extracted text from the page
 
     Returns:
         dict with program, year, grade_level, sections, etc.
     """
-
-    prompt = """Analyze this math competition paper cover/first page and identify its structure.
-
-Extract:
-1. program: The competition name (e.g., "Waterloo Gauss", "AMC 8", "Pascal", "Cayley")
-2. year: The year of the competition
-3. grade_level: Target grade level (e.g., "Grade 7", "Grade 8")
-4. sections: List of sections with their question ranges and point values
-5. total_questions: Total number of questions
-6. time_limit: Time limit in minutes
-7. scoring_info: Any scoring information mentioned
-
-Return only valid JSON.
-
-Return format:
-{
-  "program": "Gauss",
-  "year": 2023,
-  "grade_level": "Grade 7",
-  "sections": [
-    {"name": "Part A", "questions": "1-10", "points_each": 5},
-    {"name": "Part B", "questions": "11-20", "points_each": 6},
-    {"name": "Part C", "questions": "21-25", "points_each": 8}
-  ],
-  "total_questions": 25,
-  "time_limit": 60,
-  "scoring_info": "Part A: 5 points each, Part B: 6 points each, Part C: 8 points each"
-}"""
-
-    try:
-        response = client.chat.completions.create(
-            model=VISION_MODEL,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{image_base64}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            temperature=0.1,
-            max_tokens=1024
-        )
-
-        content = response.choices[0].message.content
-
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0]
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0]
-
-        return json.loads(content)
-
-    except Exception as e:
-        return {
-            "program": "Unknown",
-            "year": None,
-            "grade_level": None,
-            "sections": [],
-            "total_questions": None,
-            "time_limit": None,
-            "error": f"API Error: {str(e)}"
-        }
+    # Use text-based analysis
+    return identify_paper_structure(page_text)
 
 
 # Keep text-based functions as fallback
