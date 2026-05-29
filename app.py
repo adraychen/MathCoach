@@ -624,7 +624,7 @@ elif st.session_state.app_mode == "extract":
         col_preview, col_actions = st.columns([2, 1])
 
         with col_preview:
-            first_page = render_pdf_page_from_bytes(pdf_bytes, 1)
+            first_page = render_pdf_page_from_bytes(pdf_bytes, 1, dpi=100)
             st.image(first_page["image_bytes"], caption="Page 1", use_container_width=True)
 
         with col_actions:
@@ -632,11 +632,14 @@ elif st.session_state.app_mode == "extract":
             if st.button("Analyze Structure", type="primary"):
 
                 with st.spinner("Using vision AI to analyze..."):
-                    first_page = render_pdf_page_from_bytes(pdf_bytes, 1)
+                    first_page = render_pdf_page_from_bytes(pdf_bytes, 1, dpi=100)
                     paper_info = identify_paper_structure_from_image(first_page["image_base64"])
                     st.session_state.paper_info = paper_info
 
-                st.rerun()
+                if paper_info.get("error"):
+                    st.error(f"Error: {paper_info['error']}")
+                else:
+                    st.rerun()
 
             if st.button("Back to Upload"):
                 st.session_state.extraction_step = "upload"
@@ -678,7 +681,7 @@ elif st.session_state.app_mode == "extract":
                 for page_num in range(start_page, end_page + 1):
 
                     status.write(f"Extracting from page {page_num}...")
-                    page_data = render_pdf_page_from_bytes(pdf_bytes, page_num)
+                    page_data = render_pdf_page_from_bytes(pdf_bytes, page_num, dpi=100)
                     page_questions = parse_questions_from_image(
                         page_data["image_base64"],
                         page_num,

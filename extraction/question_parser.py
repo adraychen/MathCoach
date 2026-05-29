@@ -10,7 +10,8 @@ from groq import Groq
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Vision model for image-based extraction
-VISION_MODEL = "llama-3.2-90b-vision-preview"
+# Note: Using 11B as 90B may not be available on Groq yet
+VISION_MODEL = "llama-3.2-11b-vision-preview"
 
 # Text model for text-only tasks
 TEXT_MODEL = "llama-3.3-70b-versatile"
@@ -74,32 +75,32 @@ Return format:
   }}
 ]"""
 
-    response = client.chat.completions.create(
-        model=VISION_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{image_base64}"
-                        }
-                    }
-                ]
-            }
-        ],
-        temperature=0.1,
-        max_tokens=4096
-    )
-
-    content = response.choices[0].message.content
-
     try:
+        response = client.chat.completions.create(
+            model=VISION_MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{image_base64}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature=0.1,
+            max_tokens=4096
+        )
+
+        content = response.choices[0].message.content
+
         # Handle markdown code blocks
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0]
@@ -118,6 +119,11 @@ Return format:
         return [{
             "error": f"Failed to parse JSON: {e}",
             "raw_response": content,
+            "source_page": page_num
+        }]
+    except Exception as e:
+        return [{
+            "error": f"API Error: {str(e)}",
             "source_page": page_num
         }]
 
@@ -161,32 +167,32 @@ Return format:
   "scoring_info": "Part A: 5 points each, Part B: 6 points each, Part C: 8 points each"
 }"""
 
-    response = client.chat.completions.create(
-        model=VISION_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{image_base64}"
-                        }
-                    }
-                ]
-            }
-        ],
-        temperature=0.1,
-        max_tokens=1024
-    )
-
-    content = response.choices[0].message.content
-
     try:
+        response = client.chat.completions.create(
+            model=VISION_MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{image_base64}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature=0.1,
+            max_tokens=1024
+        )
+
+        content = response.choices[0].message.content
+
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0]
         elif "```" in content:
@@ -194,7 +200,7 @@ Return format:
 
         return json.loads(content)
 
-    except json.JSONDecodeError:
+    except Exception as e:
         return {
             "program": "Unknown",
             "year": None,
@@ -202,7 +208,7 @@ Return format:
             "sections": [],
             "total_questions": None,
             "time_limit": None,
-            "error": "Could not parse structure"
+            "error": f"API Error: {str(e)}"
         }
 
 
