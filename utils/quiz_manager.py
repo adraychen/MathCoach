@@ -1,22 +1,41 @@
 import random
+import streamlit as st
 
-QUIZ_LENGTH = 5
 
-def generate_quiz(questions, topic, difficulty):
+def generate_quiz(questions, topic, difficulty, num_questions=5):
 
-    filtered_questions = questions
+    filtered = []
 
-    if topic != "All Topics":
-        filtered_questions = [
-            q for q in filtered_questions
-            if q["topic"] == topic
-        ]
+    for q in questions:
 
-    filtered_questions = [
-        q for q in filtered_questions
-        if q["difficulty"] == difficulty
+        if topic != "All Topics" and q["topic"] != topic:
+            continue
+
+        if q["difficulty"] != difficulty:
+            continue
+
+        filtered.append(q)
+
+    used_ids = st.session_state.get("used_question_ids", [])
+
+    available = [
+        q for q in filtered
+        if q["id"] not in used_ids
     ]
 
-    random.shuffle(filtered_questions)
+    # reset if exhausted
+    if len(available) < num_questions:
 
-    return filtered_questions[:QUIZ_LENGTH]
+        used_ids = []
+        available = filtered
+
+    selected = random.sample(
+        available,
+        min(num_questions, len(available))
+    )
+
+    used_ids.extend([q["id"] for q in selected])
+
+    st.session_state.used_question_ids = used_ids
+
+    return selected

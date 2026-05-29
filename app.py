@@ -47,6 +47,8 @@ defaults = {
     "answers": {},
     "question_state": {},
     "coaching_history": {},
+    "test_history": [],
+    "used_question_ids": [],
 }
 
 for key, value in defaults.items():
@@ -91,12 +93,20 @@ with st.sidebar:
         ]
     )
 
+    num_questions = st.slider(
+        "Number of Questions",
+        min_value=3,
+        max_value=15,
+        value=5
+    )
+
     if st.button("Start Practice"):
 
         quiz_questions = generate_quiz(
-            questions,
-            topic,
-            difficulty
+            questions=questions,
+            topic=topic,
+            difficulty=difficulty,
+            num_questions=num_questions
         )
 
         question_state = {}
@@ -123,6 +133,29 @@ with st.sidebar:
         st.rerun()
 
 # ---------------------------------------------------
+# HOME SCREEN
+# ---------------------------------------------------
+
+if not st.session_state.quiz_started:
+
+    st.markdown("""
+    ## Welcome
+
+    Practice Waterloo Gauss Grade 7 arithmetic
+    and number sense questions.
+
+    Features:
+    - Waterloo-style multiple choice
+    - Socratic AI coaching
+    - Step-by-step reasoning
+    - Time tracking
+    - Rotating question bank
+    - Performance analytics
+
+    Choose settings in the sidebar to begin.
+    """)
+
+# ---------------------------------------------------
 # QUIZ SCREEN
 # ---------------------------------------------------
 
@@ -145,11 +178,13 @@ if st.session_state.quiz_started:
 
     previous_answer = st.session_state.answers.get(qid)
 
+    option_labels = ["A", "B", "C", "D", "E"]
+
     selected = st.radio(
         "Choose your answer:",
-        options=["A", "B", "C", "D", "E"],
+        options=option_labels,
         format_func=lambda x: f"{x}. {question['options'][x]}",
-        index=None if previous_answer is None else ["A", "B", "C", "D", "E"].index(previous_answer),
+        index=None if previous_answer is None else option_labels.index(previous_answer),
         key=f"radio_{qid}"
     )
 
@@ -185,47 +220,55 @@ if st.session_state.quiz_started:
                     "content": "Choose an answer before submitting."
                 })
 
-            else:
+                st.rerun()
 
-                st.session_state.question_state[qid]["attempts"] += 1
+            st.session_state.question_state[qid]["attempts"] += 1
 
-                if selected == question["correct_answer"]:
+            # -------------------------------------------
+            # CORRECT ANSWER
+            # -------------------------------------------
 
-                    if st.session_state.question_state[qid]["time_to_correct"] is None:
+            if selected == question["correct_answer"]:
 
-                        elapsed = (
-                            time.time()
-                            - st.session_state.question_state[qid]["start_time"]
-                        )
+                if st.session_state.question_state[qid]["time_to_correct"] is None:
 
-                        st.session_state.question_state[qid]["time_to_correct"] = round(elapsed, 1)
-
-                    st.session_state.question_state[qid]["is_correct"] = True
-
-                    st.session_state.coaching_history[qid].append({
-                        "role": "assistant",
-                        "content": "Correct. Moving to the next question."
-                    })
-
-                    if current_index < len(quiz_questions) - 1:
-
-                        st.session_state.current_index += 1
-
-                    st.rerun()
-
-                else:
-
-                    coaching = get_misconception_coaching(
-                        question,
-                        selected
+                    elapsed = (
+                        time.time()
+                        - st.session_state.question_state[qid]["start_time"]
                     )
 
-                    st.session_state.coaching_history[qid].append({
-                        "role": "assistant",
-                        "content": coaching
-                    })
+                    st.session_state.question_state[qid]["time_to_correct"] = round(elapsed, 1)
 
-                    st.rerun()
+                st.session_state.question_state[qid]["is_correct"] = True
+
+                st.session_state.coaching_history[qid].append({
+                    "role": "assistant",
+                    "content": "Correct. Moving to the next question."
+                })
+
+                if current_index < len(quiz_questions) - 1:
+
+                    st.session_state.current_index += 1
+
+                st.rerun()
+
+            # -------------------------------------------
+            # INCORRECT ANSWER
+            # -------------------------------------------
+
+            else:
+
+                coaching = get_misconception_coaching(
+                    question_data=question,
+                    selected_answer=selected
+                )
+
+                st.session_state.coaching_history[qid].append({
+                    "role": "assistant",
+                    "content": coaching
+                })
+
+                st.rerun()
 
     # ---------------------------------------------------
     # COACHING PANEL
@@ -294,7 +337,7 @@ if st.session_state.quiz_started:
                 st.rerun()
 
     # ---------------------------------------------------
-    # RESULTS
+    # QUIZ COMPLETION
     # ---------------------------------------------------
 
     completed = all(
@@ -313,9 +356,51 @@ if st.session_state.quiz_started:
             st.session_state.answers
         )
 
-        st.metric("Score", results["score"])
+        st.metric(
+            "Score",
+            results["score"]
+        )
 
-        st.subheader("Time to First Correct Submission")
+        # -----------------------------------------------
+        # TIMING
+        # -----------------------------------------------
+
+        avg_time_values = []
+
+        for q in quiz_questions:
+
+            qstate = st.session_state.question_state[q["id"]]
+
+            if qstate["time_to_correct"] is not None:
+                avg_time_values.append(
+                    qstate["time_to_correct"]
+                )
+
+        average_time = round(
+            sum(avg_time_values) / len(avg_time_values),
+            1
+        ) if avg_time_values else 0
+
+        # -----------------------------------------------
+        # STORE TEST HISTORY
+        # -----------------------------------------------
+
+        st.session_state.test_history.append({
+            "score": results["score"],
+            "average_time": average_time
+        })
+
+        st.session_state.test_history = (
+            st.session_state.test_history[-5:]
+        )
+
+        # -----------------------------------------------
+        # DISPLAY TIMING
+        # -----------------------------------------------
+
+        st.subheader(
+            "Time to First Correct Submission"
+        )
 
         for q in quiz_questions:
 
@@ -324,6 +409,48 @@ if st.session_state.quiz_started:
             st.write(
                 f"{q['id']} — {qstate['time_to_correct']} seconds"
             )
+
+        # -----------------------------------------------
+        # RECENT PERFORMANCE
+        # -----------------------------------------------
+
+        st.divider()
+
+        st.subheader("Recent Performance")
+
+        history = st.session_state.test_history
+
+        if history:
+
+            avg_score_last_5 = round(
+                sum(h["score"] for h in history) / len(history),
+                1
+            )
+
+            avg_time_last_5 = round(
+                sum(h["average_time"] for h in history) / len(history),
+                1
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                st.metric(
+                    "Average Score (Last 5 Tests)",
+                    avg_score_last_5
+                )
+
+            with col2:
+
+                st.metric(
+                    "Average Time (Last 5 Tests)",
+                    f"{avg_time_last_5}s"
+                )
+
+        # -----------------------------------------------
+        # NEW QUIZ
+        # -----------------------------------------------
 
         if st.button("Start New Quiz"):
 
@@ -335,25 +462,3 @@ if st.session_state.quiz_started:
             st.session_state.coaching_history = {}
 
             st.rerun()
-
-# ---------------------------------------------------
-# HOME SCREEN
-# ---------------------------------------------------
-
-if not st.session_state.quiz_started:
-
-    st.markdown("""
-    ## Welcome
-
-    Practice Waterloo Gauss Grade 7 arithmetic
-    and number sense questions.
-
-    Features:
-    - Waterloo-style multiple choice
-    - Socratic AI coaching
-    - Step-by-step reasoning
-    - Time tracking
-    - Progressive difficulty
-
-    Choose settings in the sidebar to begin.
-    """)
