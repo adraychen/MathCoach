@@ -3,8 +3,14 @@ import json
 import time
 from pathlib import Path
 
-from utils.quiz_manager import generate_quiz
+from utils.quiz_manager import generate_quiz, get_question_text
 from utils.scoring import calculate_score
+from utils.schema_loader import (
+    get_topic_display_name,
+    get_difficulty_display_name,
+    get_topics_for_program,
+    get_difficulties_for_program,
+)
 
 from coaching.socratic_coach import (
     get_starting_coaching,
@@ -26,7 +32,7 @@ st.set_page_config(
 # LOAD QUESTIONS
 # ---------------------------------------------------
 
-QUESTIONS_PATH = Path("questions/arithmetic.json")
+QUESTIONS_PATH = Path("questions/arithmetic_v2.json")
 
 
 def load_questions():
@@ -70,27 +76,35 @@ with st.sidebar:
 
     st.header("Practice Settings")
 
+    # Topic options for Waterloo Gauss
+    TOPIC_OPTIONS = [
+        ("all", "All Topics"),
+        ("number_sense", "Number Sense"),
+        ("factors_multiples_primes", "Factors, Multiples & Primes"),
+        ("fractions_decimals_percents", "Fractions, Decimals & Percents"),
+        ("patterns_sequences", "Patterns & Sequences"),
+        ("geometry_measurement", "Geometry & Measurement"),
+        ("counting_probability", "Counting & Probability"),
+        ("logic_reasoning", "Logic & Reasoning"),
+    ]
+
     topic = st.selectbox(
         "Choose Topic",
-        [
-            "All Topics",
-            "Ordering Numbers",
-            "Factors and Multiples",
-            "Prime Numbers",
-            "Fractions Decimals Percents",
-            "Consecutive Integers",
-            "Special Number Properties",
-            "Units and Measurement"
-        ]
+        options=[t[0] for t in TOPIC_OPTIONS],
+        format_func=lambda x: dict(TOPIC_OPTIONS)[x]
     )
+
+    # Difficulty options for Waterloo Gauss
+    DIFFICULTY_OPTIONS = [
+        ("part_a", "Part A (5 pts)"),
+        ("part_b", "Part B (6 pts)"),
+        ("part_c", "Part C (8 pts)"),
+    ]
 
     difficulty = st.selectbox(
         "Choose Difficulty",
-        [
-            "Part A",
-            "Part B",
-            "Part C"
-        ]
+        options=[d[0] for d in DIFFICULTY_OPTIONS],
+        format_func=lambda x: dict(DIFFICULTY_OPTIONS)[x]
     )
 
     num_questions = st.slider(
@@ -174,7 +188,7 @@ if st.session_state.quiz_started:
         f"Question {current_index + 1} of {len(quiz_questions)}"
     )
 
-    st.write(question["question"])
+    st.write(get_question_text(question))
 
     previous_answer = st.session_state.answers.get(qid)
 

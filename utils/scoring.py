@@ -30,11 +30,11 @@ def calculate_score(questions, answers):
 
             difficulty = question["difficulty"]
 
-            if difficulty == "Part A":
+            if difficulty == "part_a":
                 score += 5
-            elif difficulty == "Part B":
+            elif difficulty == "part_b":
                 score += 6
-            elif difficulty == "Part C":
+            elif difficulty == "part_c":
                 score += 8
 
             correct_count += 1
