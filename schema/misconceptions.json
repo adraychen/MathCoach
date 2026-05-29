@@ -1,0 +1,186 @@
+{
+  "misconceptions": [
+    {
+      "id": "boundary_confusion",
+      "name": "Boundary Confusion",
+      "description": "Confusing 'less than' with 'less than or equal to'",
+      "category": "interpretation",
+      "triggers": ["less than", "at most", "at least", "greater than"],
+      "coaching_hint": "Ask: Does the boundary value itself satisfy the condition?",
+      "examples": [
+        "Including 100 when asked for 'less than 100'",
+        "Excluding endpoint in 'at least' problems"
+      ]
+    },
+    {
+      "id": "off_by_one",
+      "name": "Off-by-One Error",
+      "description": "Counting error when including/excluding endpoints",
+      "category": "counting",
+      "triggers": ["how many", "between", "from...to", "inclusive"],
+      "coaching_hint": "Ask: Are you counting both endpoints? Try a small example.",
+      "examples": [
+        "Counting integers from 1 to 10 as 9 instead of 10",
+        "Fence post counting errors"
+      ]
+    },
+    {
+      "id": "percent_base_confusion",
+      "name": "Percent Base Confusion",
+      "description": "Using wrong base when calculating percentages",
+      "category": "percent",
+      "triggers": ["percent of", "increased by", "decreased by", "% more", "% less"],
+      "coaching_hint": "Ask: Percent of WHAT? What is the whole?",
+      "examples": [
+        "Calculating 20% increase on the new value instead of original",
+        "Finding percent of wrong quantity"
+      ]
+    },
+    {
+      "id": "order_of_operations",
+      "name": "Order of Operations Error",
+      "description": "Incorrect sequence of mathematical operations",
+      "category": "arithmetic",
+      "triggers": ["evaluate", "simplify", "calculate", "expression"],
+      "coaching_hint": "Ask: Which operation should be done first? Remember BEDMAS/PEMDAS.",
+      "examples": [
+        "Computing 2 + 3 x 4 as 20 instead of 14",
+        "Ignoring brackets"
+      ]
+    },
+    {
+      "id": "fraction_operation_error",
+      "name": "Fraction Operation Error",
+      "description": "Incorrect procedure for fraction arithmetic",
+      "category": "fractions",
+      "triggers": ["add fractions", "subtract fractions", "multiply", "divide fractions"],
+      "coaching_hint": "Ask: What is the rule for this operation with fractions?",
+      "examples": [
+        "Adding numerators and denominators separately",
+        "Not finding common denominator"
+      ]
+    },
+    {
+      "id": "negative_number_confusion",
+      "name": "Negative Number Confusion",
+      "description": "Errors with negative number operations or ordering",
+      "category": "number_sense",
+      "triggers": ["negative", "below zero", "smallest", "largest", "closest to"],
+      "coaching_hint": "Ask: Try placing these on a number line. Which direction is larger?",
+      "examples": [
+        "Thinking -5 is greater than -2",
+        "Confusing 'smallest' with 'closest to zero'"
+      ]
+    },
+    {
+      "id": "unit_conversion_error",
+      "name": "Unit Conversion Error",
+      "description": "Multiplying when should divide or vice versa",
+      "category": "measurement",
+      "triggers": ["convert", "meters", "centimeters", "kilometers", "grams", "kilograms"],
+      "coaching_hint": "Ask: Are you going to a bigger or smaller unit? Should the number get bigger or smaller?",
+      "examples": [
+        "Dividing when converting cm to m",
+        "Wrong conversion factor"
+      ]
+    },
+    {
+      "id": "factor_multiple_confusion",
+      "name": "Factor vs Multiple Confusion",
+      "description": "Confusing factors with multiples",
+      "category": "number_theory",
+      "triggers": ["factor", "multiple", "divisible", "divides"],
+      "coaching_hint": "Ask: Factors divide INTO a number. Multiples are PRODUCTS of a number. Which is this?",
+      "examples": [
+        "Listing multiples when asked for factors",
+        "Saying 12 is a factor of 4"
+      ]
+    },
+    {
+      "id": "prime_composite_confusion",
+      "name": "Prime Number Confusion",
+      "description": "Misidentifying prime or composite numbers",
+      "category": "number_theory",
+      "triggers": ["prime", "composite", "only factors"],
+      "coaching_hint": "Ask: What are ALL the factors? Is there more than 1 and itself?",
+      "examples": [
+        "Thinking 1 is prime",
+        "Missing that 2 is the only even prime",
+        "Not checking all possible divisors"
+      ]
+    },
+    {
+      "id": "consecutive_integer_error",
+      "name": "Consecutive Integer Error",
+      "description": "Misunderstanding consecutive integer properties",
+      "category": "number_sense",
+      "triggers": ["consecutive", "in a row", "successive"],
+      "coaching_hint": "Ask: What is special about consecutive numbers? How are they related?",
+      "examples": [
+        "Not recognizing middle = average for consecutive integers",
+        "Wrong setup for consecutive even/odd integers"
+      ]
+    },
+    {
+      "id": "area_perimeter_confusion",
+      "name": "Area vs Perimeter Confusion",
+      "description": "Using wrong formula or confusing the concepts",
+      "category": "geometry",
+      "triggers": ["area", "perimeter", "around", "inside", "square units"],
+      "coaching_hint": "Ask: Are we measuring the boundary (perimeter) or the space inside (area)?",
+      "examples": [
+        "Using perimeter formula for area",
+        "Adding all sides for area"
+      ]
+    },
+    {
+      "id": "misread_question",
+      "name": "Misread Question",
+      "description": "Missing key words or conditions in the problem",
+      "category": "interpretation",
+      "triggers": ["NOT", "except", "other than", "positive", "different"],
+      "coaching_hint": "Ask: Can you read the question again? What EXACTLY is being asked?",
+      "examples": [
+        "Missing the word 'NOT'",
+        "Finding any answer instead of specific constraint",
+        "Missing 'positive' or 'integer' constraints"
+      ]
+    },
+    {
+      "id": "decimal_place_error",
+      "name": "Decimal Place Error",
+      "description": "Misaligning decimal points or misunderstanding place value",
+      "category": "decimals",
+      "triggers": ["decimal", "tenths", "hundredths", "closest"],
+      "coaching_hint": "Ask: What does each digit represent? Try lining up the decimal points.",
+      "examples": [
+        "Thinking 0.5 < 0.15",
+        "Misaligning when adding decimals"
+      ]
+    },
+    {
+      "id": "average_sum_confusion",
+      "name": "Average vs Sum Confusion",
+      "description": "Confusing or incorrectly computing average and sum",
+      "category": "arithmetic",
+      "triggers": ["average", "mean", "total", "sum"],
+      "coaching_hint": "Ask: Average = Sum / Count. Which do you have? Which do you need?",
+      "examples": [
+        "Finding sum when asked for average",
+        "Not dividing by count"
+      ]
+    },
+    {
+      "id": "probability_complementary",
+      "name": "Complementary Probability Error",
+      "description": "Not considering all outcomes or using wrong total",
+      "category": "probability",
+      "triggers": ["probability", "chance", "likely", "out of"],
+      "coaching_hint": "Ask: What are ALL the possible outcomes? Does your answer make sense (between 0 and 1)?",
+      "examples": [
+        "Wrong denominator in probability",
+        "Not using 1 - P for complement"
+      ]
+    }
+  ]
+}

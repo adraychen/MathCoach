@@ -1,0 +1,271 @@
+{
+  "topics": [
+    {
+      "id": "number_sense",
+      "name": "Number Sense",
+      "description": "Understanding of number magnitude, ordering, and relationships",
+      "subtopics": [
+        {
+          "id": "ordering_comparing",
+          "name": "Ordering and Comparing Numbers",
+          "keywords": ["largest", "smallest", "middle", "order", "arrange", "compare"]
+        },
+        {
+          "id": "place_value",
+          "name": "Place Value",
+          "keywords": ["digit", "ones", "tens", "hundreds", "thousands"]
+        },
+        {
+          "id": "rounding_estimation",
+          "name": "Rounding and Estimation",
+          "keywords": ["round", "estimate", "approximate", "closest"]
+        },
+        {
+          "id": "number_properties",
+          "name": "Special Number Properties",
+          "keywords": ["palindrome", "even", "odd", "consecutive", "perfect square"]
+        }
+      ]
+    },
+    {
+      "id": "arithmetic_operations",
+      "name": "Arithmetic Operations",
+      "description": "Basic operations and their applications",
+      "subtopics": [
+        {
+          "id": "addition_subtraction",
+          "name": "Addition and Subtraction",
+          "keywords": ["sum", "difference", "total", "more", "less", "remaining"]
+        },
+        {
+          "id": "multiplication_division",
+          "name": "Multiplication and Division",
+          "keywords": ["product", "quotient", "times", "divided", "groups"]
+        },
+        {
+          "id": "order_of_operations",
+          "name": "Order of Operations",
+          "keywords": ["PEMDAS", "BEDMAS", "brackets", "first", "evaluate"]
+        },
+        {
+          "id": "mental_math",
+          "name": "Mental Math Strategies",
+          "keywords": ["shortcut", "quick", "mental", "calculate"]
+        }
+      ]
+    },
+    {
+      "id": "fractions_decimals_percents",
+      "name": "Fractions, Decimals, and Percents",
+      "description": "Rational number representations and conversions",
+      "subtopics": [
+        {
+          "id": "fraction_operations",
+          "name": "Fraction Operations",
+          "keywords": ["numerator", "denominator", "simplify", "equivalent"]
+        },
+        {
+          "id": "decimal_operations",
+          "name": "Decimal Operations",
+          "keywords": ["decimal", "tenths", "hundredths", "place"]
+        },
+        {
+          "id": "percent_calculations",
+          "name": "Percent Calculations",
+          "keywords": ["percent", "%", "of", "discount", "increase", "decrease"]
+        },
+        {
+          "id": "conversions",
+          "name": "Conversions Between Forms",
+          "keywords": ["convert", "express", "write as", "equivalent"]
+        }
+      ]
+    },
+    {
+      "id": "factors_multiples_primes",
+      "name": "Factors, Multiples, and Primes",
+      "description": "Number theory fundamentals",
+      "subtopics": [
+        {
+          "id": "factors",
+          "name": "Factors and Divisibility",
+          "keywords": ["factor", "divisible", "divides evenly", "divisor"]
+        },
+        {
+          "id": "multiples",
+          "name": "Multiples and LCM",
+          "keywords": ["multiple", "LCM", "least common", "every"]
+        },
+        {
+          "id": "prime_numbers",
+          "name": "Prime Numbers",
+          "keywords": ["prime", "composite", "prime factorization"]
+        },
+        {
+          "id": "gcd_lcm",
+          "name": "GCD and LCM",
+          "keywords": ["greatest common", "GCD", "HCF", "least common", "LCM"]
+        }
+      ]
+    },
+    {
+      "id": "patterns_sequences",
+      "name": "Patterns and Sequences",
+      "description": "Pattern recognition and sequence analysis",
+      "subtopics": [
+        {
+          "id": "arithmetic_sequences",
+          "name": "Arithmetic Sequences",
+          "keywords": ["pattern", "next", "term", "add", "constant difference"]
+        },
+        {
+          "id": "geometric_sequences",
+          "name": "Geometric Sequences",
+          "keywords": ["multiply", "ratio", "double", "triple"]
+        },
+        {
+          "id": "pattern_recognition",
+          "name": "Pattern Recognition",
+          "keywords": ["continues", "rule", "next term", "nth term"]
+        }
+      ]
+    },
+    {
+      "id": "algebra_equations",
+      "name": "Algebra and Equations",
+      "description": "Variables, expressions, and equation solving",
+      "subtopics": [
+        {
+          "id": "expressions",
+          "name": "Algebraic Expressions",
+          "keywords": ["expression", "simplify", "substitute", "evaluate"]
+        },
+        {
+          "id": "linear_equations",
+          "name": "Linear Equations",
+          "keywords": ["solve", "find x", "equation", "unknown"]
+        },
+        {
+          "id": "word_problems_algebra",
+          "name": "Algebraic Word Problems",
+          "keywords": ["let", "represents", "translate", "equation"]
+        }
+      ]
+    },
+    {
+      "id": "geometry_measurement",
+      "name": "Geometry and Measurement",
+      "description": "Shapes, spatial reasoning, and measurement",
+      "subtopics": [
+        {
+          "id": "perimeter_area",
+          "name": "Perimeter and Area",
+          "keywords": ["perimeter", "area", "square units", "around"]
+        },
+        {
+          "id": "angles",
+          "name": "Angles",
+          "keywords": ["angle", "degrees", "right", "straight", "triangle"]
+        },
+        {
+          "id": "shapes_properties",
+          "name": "Shape Properties",
+          "keywords": ["sides", "vertices", "parallel", "perpendicular"]
+        },
+        {
+          "id": "units_conversion",
+          "name": "Units and Conversion",
+          "keywords": ["convert", "meters", "centimeters", "units"]
+        },
+        {
+          "id": "volume_surface_area",
+          "name": "Volume and Surface Area",
+          "keywords": ["volume", "surface area", "cubic", "capacity"]
+        }
+      ]
+    },
+    {
+      "id": "counting_probability",
+      "name": "Counting and Probability",
+      "description": "Combinatorics and probability concepts",
+      "subtopics": [
+        {
+          "id": "systematic_counting",
+          "name": "Systematic Counting",
+          "keywords": ["how many", "count", "list", "ways"]
+        },
+        {
+          "id": "combinations_permutations",
+          "name": "Combinations and Permutations",
+          "keywords": ["arrange", "choose", "select", "order matters"]
+        },
+        {
+          "id": "basic_probability",
+          "name": "Basic Probability",
+          "keywords": ["probability", "likely", "chance", "random"]
+        }
+      ]
+    },
+    {
+      "id": "logic_reasoning",
+      "name": "Logic and Reasoning",
+      "description": "Logical thinking and problem-solving strategies",
+      "subtopics": [
+        {
+          "id": "deductive_reasoning",
+          "name": "Deductive Reasoning",
+          "keywords": ["if then", "must be", "therefore", "conclude"]
+        },
+        {
+          "id": "process_of_elimination",
+          "name": "Process of Elimination",
+          "keywords": ["cannot be", "eliminate", "only", "must"]
+        },
+        {
+          "id": "working_backwards",
+          "name": "Working Backwards",
+          "keywords": ["started with", "original", "before", "reverse"]
+        }
+      ]
+    },
+    {
+      "id": "word_problems",
+      "name": "Word Problems",
+      "description": "Real-world problem translation and solving",
+      "subtopics": [
+        {
+          "id": "rate_problems",
+          "name": "Rate Problems",
+          "keywords": ["speed", "per hour", "rate", "time", "distance"]
+        },
+        {
+          "id": "age_problems",
+          "name": "Age Problems",
+          "keywords": ["years old", "age", "older", "younger", "ago"]
+        },
+        {
+          "id": "money_problems",
+          "name": "Money Problems",
+          "keywords": ["cost", "price", "change", "total", "each"]
+        }
+      ]
+    },
+    {
+      "id": "model_method",
+      "name": "Model Method (Bar Models)",
+      "description": "Singapore Math visual problem-solving approach",
+      "subtopics": [
+        {
+          "id": "part_whole",
+          "name": "Part-Whole Models",
+          "keywords": ["parts", "whole", "total", "combined"]
+        },
+        {
+          "id": "comparison_models",
+          "name": "Comparison Models",
+          "keywords": ["more than", "less than", "difference", "times as many"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "difficulty_levels": [
+    {
+      "id": "part_a",
+      "name": "Part A",
+      "description": "Entry-level questions testing fundamental skills",
+      "programs": ["waterloo_gauss", "waterloo_pascal"],
+      "characteristics": {
+        "time_estimate_seconds": [30, 90],
+        "steps_required": [1, 2],
+        "cognitive_load": "low",
+        "distractor_sophistication": "obvious",
+        "computation_complexity": "simple"
+      },
+      "target_success_rate": 0.85
+    },
+    {
+      "id": "part_b",
+      "name": "Part B",
+      "description": "Intermediate questions requiring multi-step reasoning",
+      "programs": ["waterloo_gauss", "waterloo_pascal"],
+      "characteristics": {
+        "time_estimate_seconds": [60, 150],
+        "steps_required": [2, 4],
+        "cognitive_load": "medium",
+        "distractor_sophistication": "plausible",
+        "computation_complexity": "moderate"
+      },
+      "target_success_rate": 0.60
+    },
+    {
+      "id": "part_c",
+      "name": "Part C",
+      "description": "Advanced questions requiring insight or complex reasoning",
+      "programs": ["waterloo_gauss", "waterloo_pascal"],
+      "characteristics": {
+        "time_estimate_seconds": [120, 300],
+        "steps_required": [3, 6],
+        "cognitive_load": "high",
+        "distractor_sophistication": "sophisticated",
+        "computation_complexity": "complex"
+      },
+      "target_success_rate": 0.30
+    },
+    {
+      "id": "easy",
+      "name": "Easy",
+      "description": "Problems 1-8 on AMC 8, straightforward application",
+      "programs": ["amc_8"],
+      "characteristics": {
+        "time_estimate_seconds": [30, 60],
+        "steps_required": [1, 2],
+        "cognitive_load": "low",
+        "distractor_sophistication": "obvious",
+        "computation_complexity": "simple"
+      },
+      "target_success_rate": 0.80
+    },
+    {
+      "id": "medium",
+      "name": "Medium",
+      "description": "Problems 9-17 on AMC 8, requires problem-solving",
+      "programs": ["amc_8"],
+      "characteristics": {
+        "time_estimate_seconds": [60, 120],
+        "steps_required": [2, 4],
+        "cognitive_load": "medium",
+        "distractor_sophistication": "plausible",
+        "computation_complexity": "moderate"
+      },
+      "target_success_rate": 0.50
+    },
+    {
+      "id": "hard",
+      "name": "Hard",
+      "description": "Problems 18-25 on AMC 8, requires insight",
+      "programs": ["amc_8"],
+      "characteristics": {
+        "time_estimate_seconds": [90, 180],
+        "steps_required": [3, 5],
+        "cognitive_load": "high",
+        "distractor_sophistication": "sophisticated",
+        "computation_complexity": "complex"
+      },
+      "target_success_rate": 0.25
+    },
+    {
+      "id": "foundation",
+      "name": "Foundation",
+      "description": "Basic curriculum-aligned problems",
+      "programs": ["singapore_math"],
+      "characteristics": {
+        "time_estimate_seconds": [30, 60],
+        "steps_required": [1, 2],
+        "cognitive_load": "low",
+        "distractor_sophistication": "obvious",
+        "computation_complexity": "simple"
+      },
+      "target_success_rate": 0.90
+    },
+    {
+      "id": "standard",
+      "name": "Standard",
+      "description": "Grade-level curriculum problems",
+      "programs": ["singapore_math"],
+      "characteristics": {
+        "time_estimate_seconds": [60, 120],
+        "steps_required": [2, 3],
+        "cognitive_load": "medium",
+        "distractor_sophistication": "plausible",
+        "computation_complexity": "moderate"
+      },
+      "target_success_rate": 0.70
+    },
+    {
+      "id": "challenge",
+      "name": "Challenge",
+      "description": "Above grade-level enrichment problems",
+      "programs": ["singapore_math"],
+      "characteristics": {
+        "time_estimate_seconds": [90, 180],
+        "steps_required": [3, 5],
+        "cognitive_load": "high",
+        "distractor_sophistication": "sophisticated",
+        "computation_complexity": "complex"
+      },
+      "target_success_rate": 0.40
+    }
+  ]
+}

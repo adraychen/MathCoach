@@ -74,6 +74,22 @@ st.caption("Grade 7 • Arithmetic & Number Sense")
 
 with st.sidebar:
 
+    # Admin section
+    with st.expander("Admin Tools"):
+        st.caption("Manage question bank")
+
+        if st.button("Open Question Extractor", use_container_width=True):
+            st.session_state.show_extractor_info = True
+
+        if st.session_state.get("show_extractor_info"):
+            st.info(
+                "Run the extraction tool in a new terminal:\n\n"
+                "```\nstreamlit run app_extract.py\n```"
+            )
+            st.caption("This opens the PDF extraction workflow for uploading past papers.")
+
+    st.divider()
+
     st.header("Practice Settings")
 
     # Topic options for Waterloo Gauss
