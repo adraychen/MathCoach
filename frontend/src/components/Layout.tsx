@@ -22,6 +22,12 @@ export function Layout() {
             >
               Practice
             </Link>
+            <Link
+              to="/generate"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Generate
+            </Link>
           </nav>
         </div>
       </header>

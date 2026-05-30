@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import questions_router, quiz_router, coaching_router
+from .routers import questions_router, quiz_router, coaching_router, generation_router
 
 settings = get_settings()
 
@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(questions_router)
 app.include_router(quiz_router)
 app.include_router(coaching_router)
+app.include_router(generation_router)
 
 
 @app.get("/")
