@@ -4,7 +4,6 @@ Loads environment variables with validation.
 """
 
 from functools import lru_cache
-from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -21,16 +20,12 @@ class Settings(BaseSettings):
     # Groq AI
     groq_api_key: str
 
-    # CORS - accepts comma-separated string or list
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    # CORS - comma-separated string
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v):
-        if isinstance(v, str):
-            # Handle comma-separated string
-            return [origin.strip() for origin in v.split(",")]
-        return v
+    def get_cors_origins_list(self) -> list[str]:
+        """Parse CORS origins string into list."""
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
     class Config:
         env_file = ".env"
