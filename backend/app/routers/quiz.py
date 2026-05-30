@@ -5,7 +5,7 @@ Quiz session endpoints.
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
-from supabase import Client
+from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.question import Question
@@ -29,7 +29,7 @@ _sessions: dict[str, QuizSession] = {}
 @router.post("/start", response_model=QuizSession)
 async def start_quiz(
     request: QuizStart,
-    db: Client = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     """Start a new quiz session."""
     # Get questions from database

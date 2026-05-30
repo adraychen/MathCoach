@@ -201,8 +201,7 @@ POST   /api/generation/validate     # Validate generated question
 
 ### Backend (Render)
 ```
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_KEY=your-anon-key
+DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
 GROQ_API_KEY=your-groq-key
 ENVIRONMENT=production
 ```
@@ -211,6 +210,10 @@ ENVIRONMENT=production
 ```
 VITE_API_URL=https://mathcoach-api.onrender.com
 ```
+
+### Database Connection
+Using **PostgreSQL direct connection via Supabase Transaction Pooler** (SQLAlchemy + psycopg2).
+Connection string format: `postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres`
 
 ---
 
@@ -225,6 +228,13 @@ VITE_API_URL=https://mathcoach-api.onrender.com
   - Routers: /api/questions, /api/quiz, /api/coaching
   - Services: coaching.py (Groq AI), quiz.py (scoring)
   - Render deployment config
+
+### 2026-05-30 (continued)
+- Switched from Supabase client to direct PostgreSQL
+  - Using SQLAlchemy + psycopg2-binary
+  - Transaction Pooler (port 6543) for connection management
+  - Updated: database.py, config.py, questions.py, quiz.py, services/quiz.py
+  - New env var: DATABASE_URL (replaces SUPABASE_URL + SUPABASE_KEY)
 
 ### 2026-05-28
 - Completed Phase 3: Frontend Setup

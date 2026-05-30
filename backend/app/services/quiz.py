@@ -4,16 +4,36 @@ Reused from utils/quiz_manager.py and utils/scoring.py
 """
 
 import random
-from supabase import Client
+from sqlalchemy.orm import Session
 
+from ..database import QuestionModel
 from ..models.question import Question
 from ..models.quiz import QuizQuestionState
 
-TABLE_NAME = "mathcoach_questions"
+
+def model_to_question(db_question: QuestionModel) -> Question:
+    """Convert SQLAlchemy model to Pydantic model."""
+    return Question(
+        id=db_question.id,
+        program=db_question.program,
+        topic=db_question.topic,
+        subtopic=db_question.subtopic,
+        difficulty=db_question.difficulty,
+        archetype=db_question.archetype,
+        question_text=db_question.question_text,
+        options=db_question.options,
+        correct_answer=db_question.correct_answer,
+        reasoning_skills=db_question.reasoning_skills or [],
+        misconceptions=db_question.misconceptions or [],
+        distractor_rationale=db_question.distractor_rationale,
+        solution=db_question.solution,
+        coaching_hints=db_question.coaching_hints or [],
+        metadata=db_question.metadata,
+    )
 
 
 async def generate_quiz(
-    db: Client,
+    db: Session,
     program: str,
     topic: str,
     difficulty: str,
@@ -23,7 +43,7 @@ async def generate_quiz(
     Generate a quiz by selecting questions from the database.
 
     Args:
-        db: Supabase client
+        db: SQLAlchemy session
         program: Program ID (e.g., "waterloo_gauss")
         topic: Topic ID or "all"
         difficulty: Difficulty ID (e.g., "part_a")
@@ -32,26 +52,26 @@ async def generate_quiz(
     Returns:
         List of Question objects
     """
-    query = db.table(TABLE_NAME).select("*")
+    query = db.query(QuestionModel)
 
     # Filter by program
-    query = query.eq("program", program)
+    query = query.filter(QuestionModel.program == program)
 
     # Filter by topic (skip if "all")
     if topic != "all":
-        query = query.eq("topic", topic)
+        query = query.filter(QuestionModel.topic == topic)
 
     # Filter by difficulty
-    query = query.eq("difficulty", difficulty)
+    query = query.filter(QuestionModel.difficulty == difficulty)
 
     # Get questions
-    result = query.execute()
+    results = query.all()
 
-    if not result.data:
+    if not results:
         return []
 
     # Convert to Question objects
-    questions = [Question(**q) for q in result.data]
+    questions = [model_to_question(q) for q in results]
 
     # Randomly sample
     if len(questions) > num_questions:

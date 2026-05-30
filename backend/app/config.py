@@ -3,7 +3,6 @@ Configuration management for MathCoach backend.
 Loads environment variables with validation.
 """
 
-import os
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 
@@ -15,9 +14,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = False
 
-    # Supabase
-    supabase_url: str
-    supabase_key: str
+    # Database (PostgreSQL via Supabase Transaction Pooler)
+    database_url: str
 
     # Groq AI
     groq_api_key: str
