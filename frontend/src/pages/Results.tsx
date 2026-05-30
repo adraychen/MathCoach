@@ -56,9 +56,9 @@ export function ResultsPage() {
   const percentage = Math.round((correctAnswers / totalQuestions) * 100)
 
   // Calculate total points (Waterloo Gauss scoring)
-  const totalPoints = session.questions.reduce((sum, q, index) => {
+  const totalPoints = session.questions.reduce((sum, q) => {
     const state = session.question_states[q.id]
-    if (state?.correct) {
+    if (state?.is_correct) {
       // Part A = 5pts, Part B = 6pts, Part C = 8pts
       switch (q.difficulty) {
         case 'part_a':
@@ -139,9 +139,9 @@ export function ResultsPage() {
           {/* Question Review */}
           <div className="space-y-3">
             <h3 className="font-semibold">Question Review</h3>
-            {session.questions.map((question, index) => {
+            {session.questions.map((question, idx) => {
               const state = session.question_states[question.id]
-              const isCorrect = state?.correct
+              const isCorrect = state?.is_correct
 
               return (
                 <div
@@ -155,7 +155,7 @@ export function ResultsPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <div className="font-medium text-sm">
-                        Question {index + 1}
+                        Question {idx + 1}
                         <span className="ml-2 text-muted-foreground font-normal">
                           ({question.difficulty.replace('_', ' ')})
                         </span>

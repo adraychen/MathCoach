@@ -66,7 +66,6 @@ export function QuizPage() {
   }
 
   const currentQuestion: Question = session.questions[session.current_index]
-  const questionState = session.question_states[currentQuestion.id]
 
   const handleSubmit = async () => {
     if (!selectedAnswer || !sessionId) return
