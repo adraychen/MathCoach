@@ -143,20 +143,20 @@ POST   /api/generation/validate     # Validate generated question
 - [ ] Session state management
 
 ### Phase 3: Frontend Setup
-- [ ] React + Vite project initialization
-- [ ] TailwindCSS configuration
-- [ ] shadcn/ui setup
-- [ ] API client service
-- [ ] Routing setup
-- [ ] Netlify deployment config
+- [x] React + Vite project initialization
+- [x] TailwindCSS configuration
+- [x] shadcn/ui setup (button, card, radio-group, label)
+- [x] API client service (src/services/api.ts)
+- [x] Routing setup (react-router-dom)
+- [x] Netlify deployment config (netlify.toml)
 
 ### Phase 4: Practice UI
-- [ ] Home page
-- [ ] Quiz settings (topic, difficulty)
-- [ ] Question display component
-- [ ] Options list with selection
-- [ ] Coaching panel (chat interface)
-- [ ] Results page
+- [x] Home page (src/pages/Home.tsx)
+- [x] Quiz settings (src/pages/Practice.tsx)
+- [x] Question display component (src/pages/Quiz.tsx)
+- [x] Options list with selection
+- [x] Coaching panel (chat interface)
+- [x] Results page (src/pages/Results.tsx)
 - [ ] KaTeX/MathJax integration
 
 ### Phase 5: Admin UI
@@ -225,5 +225,18 @@ VITE_API_URL=https://mathcoach-api.onrender.com
   - Routers: /api/questions, /api/quiz, /api/coaching
   - Services: coaching.py (Groq AI), quiz.py (scoring)
   - Render deployment config
-- **Next:** Phase 2 (test backend locally) or Phase 3 (Frontend setup)
+
+### 2026-05-28
+- Completed Phase 3: Frontend Setup
+  - React + Vite + TypeScript project
+  - TailwindCSS + shadcn/ui components
+  - API client with typed functions
+  - React Router DOM routing
+  - Netlify deployment config
+- Completed Phase 4: Practice UI (core)
+  - Home page with feature cards
+  - Practice settings (topic, difficulty, question count)
+  - Quiz page with questions, options, coaching chat
+  - Results page with score summary, question review
+- **Next:** Phase 5 (Admin UI) or Phase 6 (Deploy)
 
