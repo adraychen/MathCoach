@@ -28,7 +28,7 @@ def model_to_question(db_question: QuestionModel) -> Question:
         distractor_rationale=db_question.distractor_rationale,
         solution=db_question.solution,
         coaching_hints=db_question.coaching_hints or [],
-        metadata=db_question.metadata,
+        metadata=db_question.question_metadata,
     )
 
 

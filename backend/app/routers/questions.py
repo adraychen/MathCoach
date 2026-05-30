@@ -34,7 +34,7 @@ def model_to_question(db_question: QuestionModel) -> Question:
         distractor_rationale=db_question.distractor_rationale,
         solution=db_question.solution,
         coaching_hints=db_question.coaching_hints or [],
-        metadata=db_question.metadata,
+        metadata=db_question.question_metadata,
     )
 
 
@@ -63,7 +63,7 @@ async def list_questions(
     if validated is not None:
         # Filter by metadata->validated JSON field
         query = query.filter(
-            QuestionModel.metadata["validated"].astext == str(validated).lower()
+            QuestionModel.question_metadata["validated"].astext == str(validated).lower()
         )
 
     # Get total count
@@ -118,7 +118,7 @@ async def create_question(
         distractor_rationale=question.distractor_rationale,
         solution=question.solution.model_dump() if question.solution else None,
         coaching_hints=question.coaching_hints,
-        metadata=question.metadata.model_dump() if question.metadata else None,
+        question_metadata=question.metadata.model_dump() if question.metadata else None,
     )
 
     db.add(db_question)
@@ -148,7 +148,9 @@ async def update_question(
             # Handle nested Pydantic models
             if hasattr(value, "model_dump"):
                 value = value.model_dump()
-            setattr(db_question, field, value)
+            # Map 'metadata' to 'question_metadata' (reserved name in SQLAlchemy)
+            db_field = "question_metadata" if field == "metadata" else field
+            setattr(db_question, db_field, value)
 
     db.commit()
     db.refresh(db_question)

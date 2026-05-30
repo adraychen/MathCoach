@@ -50,7 +50,7 @@ class QuestionModel(Base):
     distractor_rationale = Column(JSON, nullable=True)
     solution = Column(JSON, nullable=True)
     coaching_hints = Column(JSON, default=list)
-    metadata = Column(JSON, nullable=True)
+    question_metadata = Column("metadata", JSON, nullable=True)  # 'metadata' is reserved in SQLAlchemy
 
 
 def get_db() -> Session:
