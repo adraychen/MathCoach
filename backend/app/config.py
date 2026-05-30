@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # Database (PostgreSQL via Supabase Transaction Pooler)
-    database_url: str
+    supabase_url: str
 
     # Groq AI
     groq_api_key: str

@@ -16,7 +16,7 @@ def get_engine():
     """Create and cache database engine."""
     settings = get_settings()
     return create_engine(
-        settings.database_url,
+        settings.supabase_url,
         poolclass=QueuePool,
         pool_size=5,
         max_overflow=10,
