@@ -51,7 +51,7 @@ export function ResultsPage() {
   // Calculate statistics
   const totalQuestions = session.questions.length
   const correctAnswers = Object.values(session.question_states).filter(
-    (state) => state.correct
+    (state) => state.is_correct
   ).length
   const percentage = Math.round((correctAnswers / totalQuestions) * 100)
 
