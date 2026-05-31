@@ -56,7 +56,7 @@ async def list_blueprints(db: Session = Depends(get_db)):
     """Get all active blueprints for question generation."""
     blueprints = get_blueprints(db)
     return BlueprintListResponse(
-        blueprints=[BlueprintSummary(**b) for b in blueprints]
+        blueprints=[BlueprintSummary(**{**b, "id": str(b["id"])}) for b in blueprints]
     )
 
 
