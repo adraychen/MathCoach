@@ -72,7 +72,7 @@ def get_generation_plan(db: Session) -> list[dict[str, Any]]:
                 COALESCE(COUNT(q.id), 0) AS generated_count
             FROM mathcoach_blueprint_generation_plan p
             LEFT JOIN mathcoach_questions q
-                ON q.question_metadata->>'blueprint_code' = p.blueprint_code
+                ON q.metadata->>'blueprint_code' = p.blueprint_code
             WHERE p.program_name = 'Waterloo Gauss'
               AND p.grade = 7
               AND p.is_active = true
@@ -97,7 +97,7 @@ def get_next_blueprint_to_generate(db: Session) -> dict[str, Any] | None:
                 COALESCE(COUNT(q.id), 0) AS generated_count
             FROM mathcoach_blueprint_generation_plan p
             LEFT JOIN mathcoach_questions q
-                ON q.question_metadata->>'blueprint_code' = p.blueprint_code
+                ON q.metadata->>'blueprint_code' = p.blueprint_code
             WHERE p.program_name = 'Waterloo Gauss'
               AND p.grade = 7
               AND p.is_active = true
