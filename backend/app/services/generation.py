@@ -170,7 +170,7 @@ def call_groq(prompt: str, model: str = DEFAULT_MODEL) -> dict[str, Any]:
         raise RuntimeError(f"Groq returned invalid JSON: {content[:500]}") from exc
 
 
-def validate_question(question: dict[str, Any]) -> list[str]:
+def validate_question(question: dict[str, Any], blueprint: dict[str, Any] | None = None) -> list[str]:
     """Basic validation of generated question."""
     issues = []
 
@@ -185,6 +185,32 @@ def validate_question(question: dict[str, Any]) -> list[str]:
         issues.append("question_text is required")
     if not question.get("coaching_hints"):
         issues.append("coaching_hints are required")
+
+    # Validate visual if blueprint requires it
+    if blueprint and blueprint.get("visual_required"):
+        visual = question.get("visual")
+        if not visual:
+            issues.append("visual is required for this blueprint")
+        elif not isinstance(visual, dict):
+            issues.append("visual must be an object")
+        else:
+            if not visual.get("required"):
+                issues.append("visual.required must be true")
+            if not visual.get("type") or visual.get("type") == "none":
+                issues.append("visual.type must be specified")
+            if not visual.get("spec"):
+                issues.append("visual.spec must contain rendering data")
+            else:
+                spec = visual.get("spec", {})
+                visual_type = visual.get("type")
+                # Validate spec based on type
+                if visual_type == "bar_graph" or visual_type == "line_graph":
+                    if not spec.get("x_labels"):
+                        issues.append(f"{visual_type} requires x_labels")
+                    if not spec.get("values"):
+                        issues.append(f"{visual_type} requires values")
+                    elif spec.get("x_labels") and len(spec.get("x_labels", [])) != len(spec.get("values", [])):
+                        issues.append(f"{visual_type} x_labels and values must have same length")
 
     return issues
 
@@ -215,8 +241,8 @@ def generate_question(
     prompt = build_generation_prompt(blueprint, index)
     question = call_groq(prompt, model)
 
-    # Validate
-    issues = validate_question(question)
+    # Validate (pass blueprint to check visual requirements)
+    issues = validate_question(question, blueprint)
     question["_validation_issues"] = issues
     question["_blueprint"] = blueprint_code
     question["_hash"] = compute_hash(question)

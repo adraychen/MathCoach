@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { VisualRenderer } from '@/components/visuals/VisualRenderer'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -225,11 +226,11 @@ export function GeneratePage() {
                     )}
 
                     {q.visual?.required && q.visual.spec && (
-                      <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded">
-                        <p className="font-medium text-sm mb-2">Visual ({q.visual.type}):</p>
-                        <pre className="text-xs overflow-auto bg-white dark:bg-slate-900 p-2 rounded">
-                          {JSON.stringify(q.visual.spec, null, 2)}
-                        </pre>
+                      <div className="flex justify-center p-3 bg-blue-50 dark:bg-blue-950 rounded">
+                        <VisualRenderer
+                          type={q.visual.type}
+                          spec={q.visual.spec as Record<string, unknown>}
+                        />
                       </div>
                     )}
 

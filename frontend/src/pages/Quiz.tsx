@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
+import { VisualRenderer } from '@/components/visuals/VisualRenderer'
 import {
   getQuiz,
   submitAnswer,
@@ -170,13 +171,11 @@ export function QuizPage() {
             <CardContent className="space-y-6">
               {/* Visual (if present) */}
               {currentQuestion.visual?.required && currentQuestion.visual.spec && (
-                <div className="p-4 bg-muted rounded-lg">
-                  <div className="text-sm text-muted-foreground mb-2">
-                    Visual: {currentQuestion.visual.type}
-                  </div>
-                  <pre className="text-xs overflow-auto">
-                    {JSON.stringify(currentQuestion.visual.spec, null, 2)}
-                  </pre>
+                <div className="flex justify-center">
+                  <VisualRenderer
+                    type={currentQuestion.visual.type}
+                    spec={currentQuestion.visual.spec}
+                  />
                 </div>
               )}
 
