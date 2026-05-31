@@ -78,7 +78,7 @@ def get_generation_plan(db: Session) -> list[dict[str, Any]]:
                 COALESCE(COUNT(q.id), 0) AS generated_count
             FROM mathcoach_blueprint_generation_plan p
             LEFT JOIN mathcoach_questions q
-                ON q.metadata->>'blueprint_code' = p.blueprint_code
+                ON q.blueprint_code = p.blueprint_code
             WHERE p.program_name = 'Waterloo Gauss'
               AND p.grade = 7
               AND p.is_active = true
@@ -103,7 +103,7 @@ def get_next_blueprint_to_generate(db: Session) -> dict[str, Any] | None:
                 COALESCE(COUNT(q.id), 0) AS generated_count
             FROM mathcoach_blueprint_generation_plan p
             LEFT JOIN mathcoach_questions q
-                ON q.metadata->>'blueprint_code' = p.blueprint_code
+                ON q.blueprint_code = p.blueprint_code
             WHERE p.program_name = 'Waterloo Gauss'
               AND p.grade = 7
               AND p.is_active = true
@@ -132,16 +132,81 @@ def get_blueprint(db: Session, blueprint_code: str) -> dict[str, Any] | None:
     return dict(row._mapping) if row else None
 
 
+def get_blueprint_specific_rules(blueprint_code: str) -> str:
+    """Return blueprint-specific generation rules."""
+    rules = {
+        "angle_deduction_fundamentals": """
+GEOMETRY CONSISTENCY RULES (CRITICAL):
+- The text, visual spec, and solution must describe the SAME diagram.
+- Do NOT label an angle formed by three collinear points as anything other than 180°.
+- If D lies on the extension of BC beyond C, then B, C, D are collinear and angle BCD is exactly 180°.
+- Do NOT say "angle BCD = 120°" if B, C, and D are collinear on a straight line.
+- If using an exterior angle, name it with non-collinear rays (e.g., angle ACD), not the straight-line angle.
+- Every named angle must be geometrically possible from the described points.
+- Avoid unnecessary point extensions unless the target angle requires them.
+- Prefer simple valid structures: triangle angle sum, straight-line supplementary angles, isosceles base angles.
+- Before finalizing, verify that the diagram description, labels, correct answer, and solution do not contradict each other.
+
+ALLOWED FIRST-ROUND ANGLE TEMPLATES:
+1. Triangle with two known interior angles; ask for third interior angle.
+2. Triangle with two known interior angles; side extended at one vertex; ask for exterior angle.
+3. Isosceles triangle with vertex angle known; ask for base angle.
+4. Isosceles triangle with base angle known; ask for exterior angle at a base vertex.
+""",
+        "arithmetic_progression_membership": """
+SEQUENCE CONSISTENCY RULES (CRITICAL):
+- State the complete repeating cycle clearly in the question.
+- Identify cycle_length explicitly in your solution.
+- Choose term_position and compute term_position ÷ cycle_length.
+- If remainder = 0, the correct value is the LAST item in the cycle.
+- If remainder != 0, the correct value is the item at that 1-based remainder position.
+- The correct_answer, distractor_rationale, and solution MUST agree.
+- Do NOT include self-correction language like "but wait" or "this contradicts."
+- Double-check: cycle length, term position, division, remainder, and final answer must all be consistent.
+""",
+        "visual_data_extraction": """
+VISUAL DATA RULES:
+- Start the question with "In the graph," or "Based on the bar graph shown,".
+- The visual spec values and x_labels must match what the question asks about.
+- The correct answer must be directly readable from the visual data.
+- Do NOT require calculations beyond simple comparison or reading values.
+""",
+    }
+    return rules.get(blueprint_code, "")
+
+
 def build_generation_prompt(blueprint: dict[str, Any], index: int) -> str:
     part_letter, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
     created_at = now_iso()
+    blueprint_code = blueprint.get('blueprint_code', '')
+    blueprint_rules = get_blueprint_specific_rules(blueprint_code)
 
     return f"""
 You are generating one original Waterloo Gauss Grade 7 multiple-choice math question.
 Return JSON only. No Markdown. No explanation outside JSON.
 
+WATERLOO GAUSS STYLE (MANDATORY):
+- Write in formal, concise contest style. Every word must serve the mathematical setup.
+- Use direct setup structure: "If...", "Suppose...", "A list of...", or "In the diagram,".
+- Follow with specific question: "What is...", "How many...", "Which of the following...".
+- Part A: 1 sentence. Part B: 2 sentences. Part C: 3-4 concise sentences.
+- Neutral tone. No instructional fluff like "Let's explore," "Help Dan," "Remember that...".
+- Use Grade 7 technical terms (integer, prime, mean, sum, product) without explanation.
+- Order all numerical answer choices from LEAST to GREATEST.
+- If a visual is required, start the question with "In the diagram," or "Based on the graph shown,".
+
+DISTRACTOR RULES (MANDATORY):
+- Each wrong answer must represent a PLAUSIBLE student error (not arbitrary).
+- The correct answer MUST have distractor_rationale = null (not an explanation of why it's correct).
+- Wrong answer rationales explain the mistake that leads to choosing that answer.
+
+SOLUTION RULES (MANDATORY):
+- The solution steps must be mathematically correct.
+- The solution must agree with correct_answer.
+- Do NOT include self-doubt language like "but wait" or "let me check again".
+{blueprint_rules}
 Blueprint:
-- blueprint_code: {blueprint.get('blueprint_code')}
+- blueprint_code: {blueprint_code}
 - blueprint_name: {blueprint.get('blueprint_name')}
 - program_name: Waterloo Gauss
 - grade: 7
@@ -159,32 +224,23 @@ Blueprint:
 - visual_required: {blueprint.get('visual_required')}
 - visual_type: {blueprint.get('visual_type')}
 
-Question requirements:
-1. Create an original question. Do not copy any past question wording.
-2. Use five answer choices A-E.
-3. Exactly one answer must be correct.
-4. Include distractor_rationale for every wrong answer.
-5. Include coaching_hints with 2-4 progressive hints.
-6. Keep language appropriate for Grade 7.
-7. If visual_required is true, you MUST include a "visual" object with the graph/diagram data.
-
 Return JSON with these keys:
-- id: use format waterloo_gauss_{blueprint.get('blueprint_code')}_{difficulty_id}_{index:04d}
+- id: use format waterloo_gauss_{blueprint_code}_{difficulty_id}_{index:04d}
 - program: "waterloo_gauss"
 - topic: primary topic slug
 - subtopic: secondary topic slug or null
 - difficulty: "{difficulty_id}"
 - archetype: "{blueprint.get('archetype')}"
-- question_text: the question
-- options: {{"A": "...", "B": "...", "C": "...", "D": "...", "E": "..."}}
+- question_text: the question (Waterloo style, concise)
+- options: {{"A": "...", "B": "...", "C": "...", "D": "...", "E": "..."}} (ordered least to greatest)
 - correct_answer: one of A-E
 - reasoning_skills: array of skills
 - misconceptions: array of common mistakes
-- distractor_rationale: {{"A": "why wrong or null if correct", ...}}
+- distractor_rationale: {{"A": "why wrong or null if correct", "B": "...", ...}} (null for correct answer!)
 - solution: {{"steps": ["step1", "step2"], "key_insight": "main idea"}}
 - coaching_hints: ["hint1", "hint2", "hint3"]
-- visual: {{"required": {str(blueprint.get('visual_required', False)).lower()}, "type": "{blueprint.get('visual_type', 'none')}", "spec": {{...data for rendering the visual...}}}}
-- metadata: {{"source": "ai_generated", "blueprint_code": "{blueprint.get('blueprint_code')}", "created_at": "{created_at}"}}
+- visual: {{"required": {str(blueprint.get('visual_required', False)).lower()}, "type": "{blueprint.get('visual_type', 'none')}", "spec": {{...data for rendering...}}}}
+- metadata: {{"source": "ai_generated", "blueprint_code": "{blueprint_code}", "created_at": "{created_at}"}}
 
 For visual.spec based on visual_type:
 - bar_graph: {{"title": "...", "x_labels": ["A", "B", "C"], "values": [10, 20, 30], "y_axis_label": "..."}}
@@ -323,6 +379,15 @@ def save_question_to_db(db: Session, question: dict[str, Any]) -> str:
     # Remove internal fields
     q = {k: v for k, v in question.items() if not k.startswith("_")}
 
+    # Extract visual info
+    visual = q.get("visual") or {}
+    visual_required = visual.get("required", False) if isinstance(visual, dict) else False
+    visual_type = visual.get("type") if isinstance(visual, dict) else None
+
+    # Extract blueprint_code from metadata
+    metadata = q.get("metadata") or {}
+    blueprint_code = metadata.get("blueprint_code") if isinstance(metadata, dict) else None
+
     db_question = QuestionModel(
         id=q.get("id"),
         program=q.get("program", "waterloo_gauss"),
@@ -340,6 +405,13 @@ def save_question_to_db(db: Session, question: dict[str, Any]) -> str:
         coaching_hints=q.get("coaching_hints", []),
         visual=q.get("visual"),
         question_metadata=q.get("metadata"),
+        # New direct lookup fields
+        blueprint_code=blueprint_code,
+        environment="dev",
+        review_status="draft",
+        is_active=True,
+        visual_required=visual_required,
+        visual_type=visual_type if visual_type and visual_type != "none" else None,
     )
 
     db.add(db_question)
