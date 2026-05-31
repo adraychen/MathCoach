@@ -24,6 +24,12 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def generate_unique_id(blueprint_code: str, difficulty_id: str) -> str:
+    """Generate unique question ID using timestamp."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")[:18]
+    return f"waterloo_gauss_{blueprint_code}_{difficulty_id}_{timestamp}"
+
+
 def slugify(text: str) -> str:
     text = text.lower().strip()
     text = re.sub(r"[^a-z0-9]+", "_", text)
@@ -296,6 +302,10 @@ def generate_question(
 
     prompt = build_generation_prompt(blueprint, index)
     question = call_groq(prompt, model)
+
+    # Override ID with unique timestamp-based ID
+    _, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
+    question["id"] = generate_unique_id(blueprint_code, difficulty_id)
 
     # Validate (pass blueprint to check visual requirements)
     issues = validate_question(question, blueprint)

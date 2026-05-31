@@ -6,8 +6,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { VisualRenderer } from '@/components/visuals/VisualRenderer'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
-const GENERATION_DELAY_MS = 4000 // 4 seconds between API calls for rate limiting
-const PLAN_REFRESH_INTERVAL = 5 // Refresh plan status every N questions
+const GENERATION_DELAY_MS = 45000 // 45 seconds between API calls (Groq: 6000 TPM, ~3885 tokens/question)
+const PLAN_REFRESH_INTERVAL = 3 // Refresh plan status every N questions
 
 interface Blueprint {
   id: string
@@ -141,14 +141,23 @@ export function GeneratePage() {
           break
         }
 
-        questionCount++
-
         if (data.question) {
           const q = data.question
+          const firstIssue = q.validation_issues?.[0] || ''
+
+          // Check if rate limited (in validation_issues)
+          if (firstIssue.includes('429') || firstIssue.includes('rate_limit')) {
+            addLog(`Rate limited. Waiting 60s...`)
+            await new Promise((resolve) => setTimeout(resolve, 60000))
+            continue // Retry without incrementing count
+          }
+
+          questionCount++
+
           if (q.saved) {
             addLog(`[${questionCount}] Saved: ${data.blueprint_code} - ${q.id}`)
           } else if (q.validation_issues?.length > 0) {
-            addLog(`[${questionCount}] Invalid: ${data.blueprint_code} - ${q.validation_issues[0]}`)
+            addLog(`[${questionCount}] Invalid: ${data.blueprint_code} - ${firstIssue.substring(0, 80)}`)
           } else {
             addLog(`[${questionCount}] Generated: ${data.blueprint_code}`)
           }
@@ -161,7 +170,9 @@ export function GeneratePage() {
           await loadPlan()
         }
 
-        // Rate limit delay
+        // Rate limit delay with countdown
+        const waitSeconds = GENERATION_DELAY_MS / 1000
+        addLog(`Waiting ${waitSeconds}s for rate limit...`)
         await new Promise((resolve) => setTimeout(resolve, GENERATION_DELAY_MS))
 
       } catch (err) {
