@@ -56,6 +56,62 @@ def get_blueprints(db: Session) -> list[dict[str, Any]]:
     return [dict(row._mapping) for row in result]
 
 
+def get_generation_plan(db: Session) -> list[dict[str, Any]]:
+    """Get generation plan with current progress."""
+    result = db.execute(
+        text("""
+            SELECT
+                p.id,
+                p.blueprint_code,
+                p.difficulty_level,
+                p.evidence_level,
+                p.dev_generation_target,
+                p.requires_visual,
+                p.priority,
+                p.notes,
+                COALESCE(COUNT(q.id), 0) AS generated_count
+            FROM mathcoach_blueprint_generation_plan p
+            LEFT JOIN mathcoach_questions q
+                ON q.question_metadata->>'blueprint_code' = p.blueprint_code
+            WHERE p.program_name = 'Waterloo Gauss'
+              AND p.grade = 7
+              AND p.is_active = true
+            GROUP BY p.id, p.blueprint_code, p.difficulty_level,
+                     p.evidence_level, p.dev_generation_target,
+                     p.requires_visual, p.priority, p.notes
+            ORDER BY p.priority, p.blueprint_code
+        """)
+    )
+    return [dict(row._mapping) for row in result]
+
+
+def get_next_blueprint_to_generate(db: Session) -> dict[str, Any] | None:
+    """Get the next blueprint that needs questions generated."""
+    result = db.execute(
+        text("""
+            SELECT
+                p.blueprint_code,
+                p.dev_generation_target,
+                p.requires_visual,
+                p.priority,
+                COALESCE(COUNT(q.id), 0) AS generated_count
+            FROM mathcoach_blueprint_generation_plan p
+            LEFT JOIN mathcoach_questions q
+                ON q.question_metadata->>'blueprint_code' = p.blueprint_code
+            WHERE p.program_name = 'Waterloo Gauss'
+              AND p.grade = 7
+              AND p.is_active = true
+            GROUP BY p.id, p.blueprint_code, p.dev_generation_target,
+                     p.requires_visual, p.priority
+            HAVING COALESCE(COUNT(q.id), 0) < p.dev_generation_target
+            ORDER BY p.priority, p.blueprint_code
+            LIMIT 1
+        """)
+    )
+    row = result.fetchone()
+    return dict(row._mapping) if row else None
+
+
 def get_blueprint(db: Session, blueprint_code: str) -> dict[str, Any] | None:
     """Get a single blueprint by code."""
     result = db.execute(

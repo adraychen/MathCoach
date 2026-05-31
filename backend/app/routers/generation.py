@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..services.generation import (
     get_blueprints,
+    get_generation_plan,
+    get_next_blueprint_to_generate,
     generate_question,
     save_question_to_db,
 )
@@ -50,6 +52,32 @@ class GenerateResponse(BaseModel):
     questions: list[GeneratedQuestion]
     blueprint_code: str
     count: int
+
+
+class PlanItem(BaseModel):
+    id: str
+    blueprint_code: str
+    difficulty_level: str
+    evidence_level: str
+    dev_generation_target: int
+    requires_visual: bool
+    priority: int
+    notes: str | None
+    generated_count: int
+
+
+class PlanStatusResponse(BaseModel):
+    plan: list[PlanItem]
+    total_target: int
+    total_generated: int
+    completed: bool
+
+
+class GenerateNextResponse(BaseModel):
+    question: GeneratedQuestion | None
+    blueprint_code: str | None
+    remaining: int
+    completed: bool
 
 
 @router.get("/blueprints", response_model=BlueprintListResponse)
@@ -108,3 +136,93 @@ async def generate_questions(
         blueprint_code=request.blueprint_code,
         count=len(questions),
     )
+
+
+@router.get("/plan", response_model=PlanStatusResponse)
+async def get_plan_status(db: Session = Depends(get_db)):
+    """Get generation plan with current progress."""
+    plan = get_generation_plan(db)
+
+    plan_items = [
+        PlanItem(**{**p, "id": str(p["id"])})
+        for p in plan
+    ]
+
+    total_target = sum(p.dev_generation_target for p in plan_items)
+    total_generated = sum(p.generated_count for p in plan_items)
+
+    return PlanStatusResponse(
+        plan=plan_items,
+        total_target=total_target,
+        total_generated=total_generated,
+        completed=total_generated >= total_target,
+    )
+
+
+@router.post("/generate-next", response_model=GenerateNextResponse)
+async def generate_next_question(db: Session = Depends(get_db)):
+    """Generate the next question according to the plan."""
+    next_bp = get_next_blueprint_to_generate(db)
+
+    if not next_bp:
+        return GenerateNextResponse(
+            question=None,
+            blueprint_code=None,
+            remaining=0,
+            completed=True,
+        )
+
+    blueprint_code = next_bp["blueprint_code"]
+    generated_count = next_bp["generated_count"]
+    target = next_bp["dev_generation_target"]
+
+    # Calculate remaining across all blueprints
+    plan = get_generation_plan(db)
+    total_target = sum(p["dev_generation_target"] for p in plan)
+    total_generated = sum(p["generated_count"] for p in plan)
+    remaining = total_target - total_generated
+
+    try:
+        # Use generated_count + 1 as index for unique IDs
+        question = generate_question(db, blueprint_code, index=generated_count + 1)
+
+        saved = False
+        if not question.get("_validation_issues"):
+            try:
+                save_question_to_db(db, question)
+                saved = True
+                remaining -= 1  # We just saved one
+            except Exception as e:
+                question["_validation_issues"] = question.get("_validation_issues", []) + [f"Save error: {str(e)}"]
+
+        return GenerateNextResponse(
+            question=GeneratedQuestion(
+                id=question.get("id"),
+                question_text=question.get("question_text"),
+                options=question.get("options"),
+                correct_answer=question.get("correct_answer"),
+                coaching_hints=question.get("coaching_hints"),
+                visual=question.get("visual"),
+                validation_issues=question.get("_validation_issues", []),
+                saved=saved,
+            ),
+            blueprint_code=blueprint_code,
+            remaining=remaining,
+            completed=remaining <= 0,
+        )
+    except Exception as e:
+        return GenerateNextResponse(
+            question=GeneratedQuestion(
+                id=None,
+                question_text=None,
+                options=None,
+                correct_answer=None,
+                coaching_hints=None,
+                visual=None,
+                validation_issues=[str(e)],
+                saved=False,
+            ),
+            blueprint_code=blueprint_code,
+            remaining=remaining,
+            completed=False,
+        )

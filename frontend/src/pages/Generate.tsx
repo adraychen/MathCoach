@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { VisualRenderer } from '@/components/visuals/VisualRenderer'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
+const GENERATION_DELAY_MS = 3000 // 3 seconds between API calls for rate limiting
 
 interface Blueprint {
   id: string
@@ -31,6 +32,25 @@ interface GeneratedQuestion {
   saved: boolean
 }
 
+interface PlanItem {
+  id: string
+  blueprint_code: string
+  difficulty_level: string
+  evidence_level: string
+  dev_generation_target: number
+  requires_visual: boolean
+  priority: number
+  notes: string | null
+  generated_count: number
+}
+
+interface PlanStatus {
+  plan: PlanItem[]
+  total_target: number
+  total_generated: number
+  completed: boolean
+}
+
 export function GeneratePage() {
   const [blueprints, setBlueprints] = useState<Blueprint[]>([])
   const [selectedBlueprint, setSelectedBlueprint] = useState<string>('')
@@ -40,6 +60,13 @@ export function GeneratePage() {
   const [isLoadingBlueprints, setIsLoadingBlueprints] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([])
+
+  // Plan-based generation state
+  const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null)
+  const [isLoadingPlan, setIsLoadingPlan] = useState(false)
+  const [isPlanGenerating, setIsPlanGenerating] = useState(false)
+  const [planLog, setPlanLog] = useState<string[]>([])
+  const stopGenerationRef = useRef(false)
 
   // Load blueprints
   useEffect(() => {
@@ -60,6 +87,104 @@ export function GeneratePage() {
     }
     loadBlueprints()
   }, [])
+
+  // Load generation plan
+  const loadPlan = useCallback(async () => {
+    setIsLoadingPlan(true)
+    try {
+      const response = await fetch(`${API_BASE}/api/generation/plan`)
+      if (!response.ok) throw new Error('Failed to load plan')
+      const data = await response.json()
+      setPlanStatus(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load plan')
+    } finally {
+      setIsLoadingPlan(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadPlan()
+  }, [loadPlan])
+
+  // Generate according to plan
+  const handlePlanGenerate = async () => {
+    setIsPlanGenerating(true)
+    stopGenerationRef.current = false
+    setPlanLog([])
+    setError(null)
+
+    const addLog = (msg: string) => {
+      setPlanLog((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`])
+    }
+
+    addLog('Starting plan-based generation...')
+
+    while (!stopGenerationRef.current) {
+      try {
+        const response = await fetch(`${API_BASE}/api/generation/generate-next`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}))
+          throw new Error(errData.detail || 'Generation failed')
+        }
+
+        const data = await response.json()
+
+        if (data.completed) {
+          addLog('All questions generated!')
+          break
+        }
+
+        if (data.question) {
+          const q = data.question
+          if (q.saved) {
+            addLog(`Generated & saved: ${data.blueprint_code} - ${q.id}`)
+          } else if (q.validation_issues?.length > 0) {
+            addLog(`Generated but invalid: ${data.blueprint_code} - ${q.validation_issues.join(', ')}`)
+          } else {
+            addLog(`Generated: ${data.blueprint_code}`)
+          }
+        }
+
+        addLog(`Remaining: ${data.remaining} questions`)
+
+        // Refresh plan status
+        await loadPlan()
+
+        // Rate limit delay
+        addLog(`Waiting ${GENERATION_DELAY_MS / 1000}s for rate limit...`)
+        await new Promise((resolve) => setTimeout(resolve, GENERATION_DELAY_MS))
+
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        addLog(`Error: ${msg}`)
+
+        // If rate limited, wait longer
+        if (msg.includes('rate') || msg.includes('429')) {
+          addLog('Rate limited. Waiting 30s...')
+          await new Promise((resolve) => setTimeout(resolve, 30000))
+        } else {
+          setError(msg)
+          break
+        }
+      }
+    }
+
+    if (stopGenerationRef.current) {
+      addLog('Generation stopped by user.')
+    }
+
+    setIsPlanGenerating(false)
+    await loadPlan()
+  }
+
+  const handleStopGeneration = () => {
+    stopGenerationRef.current = true
+  }
 
   const handleGenerate = async () => {
     if (!selectedBlueprint) return
@@ -178,6 +303,115 @@ export function GeneratePage() {
             size="lg"
           >
             {isLoading ? 'Generating...' : 'Generate Questions'}
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Plan-Based Generation */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Generate According to Plan</CardTitle>
+          <CardDescription>
+            Automatically generate questions based on the blueprint generation plan
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {isLoadingPlan ? (
+            <p className="text-sm text-muted-foreground">Loading plan...</p>
+          ) : planStatus ? (
+            <>
+              {/* Progress Summary */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Progress</span>
+                    <span>{planStatus.total_generated} / {planStatus.total_target}</span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-3">
+                    <div
+                      className="bg-primary h-3 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, (planStatus.total_generated / planStatus.total_target) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                {planStatus.completed && (
+                  <span className="text-green-600 font-medium">Complete</span>
+                )}
+              </div>
+
+              {/* Plan Table */}
+              <div className="max-h-64 overflow-y-auto border rounded">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="text-left p-2">Blueprint</th>
+                      <th className="text-left p-2">Difficulty</th>
+                      <th className="text-center p-2">Visual</th>
+                      <th className="text-center p-2">Priority</th>
+                      <th className="text-right p-2">Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {planStatus.plan.map((item) => (
+                      <tr
+                        key={item.id}
+                        className={
+                          item.generated_count >= item.dev_generation_target
+                            ? 'bg-green-50 dark:bg-green-950'
+                            : ''
+                        }
+                      >
+                        <td className="p-2 font-mono text-xs">{item.blueprint_code}</td>
+                        <td className="p-2">{item.difficulty_level}</td>
+                        <td className="p-2 text-center">{item.requires_visual ? 'Yes' : ''}</td>
+                        <td className="p-2 text-center">{item.priority}</td>
+                        <td className="p-2 text-right">
+                          {item.generated_count} / {item.dev_generation_target}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Generation Log */}
+              {planLog.length > 0 && (
+                <div className="bg-muted p-3 rounded max-h-48 overflow-y-auto font-mono text-xs">
+                  {planLog.map((log, i) => (
+                    <div key={i}>{log}</div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No generation plan found. Run the SQL to create the plan table first.
+            </p>
+          )}
+
+          {error && <div className="text-sm text-destructive">{error}</div>}
+        </CardContent>
+
+        <CardFooter className="gap-2">
+          {isPlanGenerating ? (
+            <Button onClick={handleStopGeneration} variant="destructive" className="w-full">
+              Stop Generation
+            </Button>
+          ) : (
+            <Button
+              onClick={handlePlanGenerate}
+              disabled={!planStatus || planStatus.completed || isLoadingPlan}
+              className="w-full"
+              size="lg"
+            >
+              Generate According to Plan
+            </Button>
+          )}
+          <Button onClick={loadPlan} variant="outline" disabled={isLoadingPlan}>
+            Refresh
           </Button>
         </CardFooter>
       </Card>
