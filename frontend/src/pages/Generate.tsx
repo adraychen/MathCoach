@@ -6,7 +6,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { VisualRenderer } from '@/components/visuals/VisualRenderer'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
-const GENERATION_DELAY_MS = 3000 // 3 seconds between API calls for rate limiting
+const GENERATION_DELAY_MS = 4000 // 4 seconds between API calls for rate limiting
+const PLAN_REFRESH_INTERVAL = 5 // Refresh plan status every N questions
 
 interface Blueprint {
   id: string
@@ -119,6 +120,7 @@ export function GeneratePage() {
     }
 
     addLog('Starting plan-based generation...')
+    let questionCount = 0
 
     while (!stopGenerationRef.current) {
       try {
@@ -139,24 +141,27 @@ export function GeneratePage() {
           break
         }
 
+        questionCount++
+
         if (data.question) {
           const q = data.question
           if (q.saved) {
-            addLog(`Generated & saved: ${data.blueprint_code} - ${q.id}`)
+            addLog(`[${questionCount}] Saved: ${data.blueprint_code} - ${q.id}`)
           } else if (q.validation_issues?.length > 0) {
-            addLog(`Generated but invalid: ${data.blueprint_code} - ${q.validation_issues.join(', ')}`)
+            addLog(`[${questionCount}] Invalid: ${data.blueprint_code} - ${q.validation_issues[0]}`)
           } else {
-            addLog(`Generated: ${data.blueprint_code}`)
+            addLog(`[${questionCount}] Generated: ${data.blueprint_code}`)
           }
         }
 
-        addLog(`Remaining: ${data.remaining} questions`)
+        addLog(`Remaining: ${data.remaining}`)
 
-        // Refresh plan status
-        await loadPlan()
+        // Refresh plan status periodically (not every question)
+        if (questionCount % PLAN_REFRESH_INTERVAL === 0) {
+          await loadPlan()
+        }
 
         // Rate limit delay
-        addLog(`Waiting ${GENERATION_DELAY_MS / 1000}s for rate limit...`)
         await new Promise((resolve) => setTimeout(resolve, GENERATION_DELAY_MS))
 
       } catch (err) {
@@ -164,9 +169,9 @@ export function GeneratePage() {
         addLog(`Error: ${msg}`)
 
         // If rate limited, wait longer
-        if (msg.includes('rate') || msg.includes('429')) {
-          addLog('Rate limited. Waiting 30s...')
-          await new Promise((resolve) => setTimeout(resolve, 30000))
+        if (msg.includes('rate') || msg.includes('429') || msg.includes('too_many')) {
+          addLog('Rate limited. Waiting 60s...')
+          await new Promise((resolve) => setTimeout(resolve, 60000))
         } else {
           setError(msg)
           break
