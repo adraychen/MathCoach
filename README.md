@@ -35,209 +35,149 @@ The platform is designed to help students learn how to think rather than simply 
 
 ---
 
-# Vision
+# Live Demo
 
-Traditional learning platforms focus on:
-
-* answer checking
-* static hints
-* repetitive drills
-
-Math Coach focuses on:
-
-* reasoning development
-* productive struggle
-* guided discovery
-* contest-style thinking
-* misconception correction
-
-The long-term goal is to create an AI-native learning system capable of supporting multiple educational programs and teaching styles through uploaded reference material.
+- **Frontend**: https://mathcoach.netlify.app
+- **Backend API**: https://mathcoach.onrender.com
 
 ---
 
-# Core Features
+# Architecture
 
-## Program-Based Learning
+## Production Stack (Current)
 
-Students can select a learning program such as:
+### Frontend
+* React + Vite + TypeScript
+* TailwindCSS + shadcn/ui
+* Deployed on **Netlify**
 
-* Waterloo Gauss Competition
-* AMC 8
-* School Curriculum
-* Custom Uploaded Programs
+### Backend
+* FastAPI + Python
+* SQLAlchemy + psycopg2
+* Deployed on **Render**
 
-Each program maintains its own:
+### Database
+* Supabase PostgreSQL (Transaction Pooler)
 
-* style
-* difficulty
-* coaching approach
-* reasoning patterns
-
----
-
-## AI Question Generation
-
-The system generates new questions based on:
-
-* uploaded sample papers
-* extracted reasoning archetypes
-* topic structures
-* difficulty levels
-* misconception patterns
-
-Generated questions are:
-
-* multiple choice
-* contest-style
-* misconception-aware
-* reusable
-* scalable
+### AI Services
+* Groq API with `qwen/qwen3-32b` model
+* Used for question generation and Socratic coaching
 
 ---
+
+# Features
+
+## Practice Mode
+Students can:
+* Select topic and difficulty (Part A/B/C)
+* Answer multiple-choice questions
+* Receive Socratic coaching when stuck
+* View results with score breakdown
+
+## Question Generation (Admin)
+* Select from blueprint templates
+* AI generates new questions matching the blueprint style
+* Validate and save to database
+* Uses `qwen/qwen3-32b` for math-focused generation
 
 ## Socratic Coaching
-
 Instead of giving direct answers, Math Coach:
-
 * asks guiding questions
 * detects misconceptions
 * encourages reasoning
 * controls hint depth
 * supports productive struggle
 
-The coaching system is designed to:
+---
 
-* reveal minimal information
-* guide one step at a time
-* adapt to student thinking
+# API Endpoints
+
+### Quiz
+```
+POST   /api/quiz/start              # Start quiz session
+GET    /api/quiz/{session_id}       # Get quiz state
+POST   /api/quiz/{session_id}/answer # Submit answer
+GET    /api/quiz/{session_id}/results # Get results
+```
+
+### Coaching
+```
+POST   /api/coaching/start          # Get initial coaching hint
+POST   /api/coaching/misconception  # Get misconception feedback
+POST   /api/coaching/followup       # Continue conversation
+```
+
+### Questions
+```
+GET    /api/questions               # List questions (with filters)
+GET    /api/questions/{id}          # Get single question
+POST   /api/questions               # Create question
+PUT    /api/questions/{id}          # Update question
+DELETE /api/questions/{id}          # Delete question
+```
+
+### Generation
+```
+GET    /api/generation/blueprints   # List available blueprints
+POST   /api/generation/generate     # Generate new questions
+```
 
 ---
 
-## Student Analytics
+# Environment Variables
 
-The platform tracks:
+### Backend (Render)
+```
+SUPABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+GROQ_API_KEY=your-groq-key
+CORS_ORIGINS=https://mathcoach.netlify.app
+ENVIRONMENT=production
+```
 
-* score history
-* time-to-correct-answer
-* weak topics
-* misconception trends
-* coaching usage
-
-These analytics support:
-
-* adaptive practice
-* personalized learning
-* progress monitoring
-
----
-
-# System Workflow
-
-## 1. Upload Reference Material
-
-Administrators upload:
-
-* PDFs
-* worksheets
-* contest papers
-* question banks
+### Frontend (Netlify)
+```
+VITE_API_URL=https://mathcoach.onrender.com
+```
 
 ---
 
-## 2. AI Pattern Extraction
-
-The system analyzes:
-
-* wording style
-* reasoning structures
-* distractor strategies
-* cognitive skills
-* topic taxonomy
-
----
-
-## 3. Question Archetype Creation
-
-The platform builds reusable question blueprints such as:
-
-* divisibility elimination
-* percent traps
-* ordering and comparison
-* consecutive integer reasoning
-
----
-
-## 4. AI Question Generation
-
-The AI generates:
-
-* new numerical variations
-* new contexts
-* controlled distractors
-* coaching metadata
-
-while preserving the original program style.
-
----
-
-## 5. Validation and Storage
-
-Questions are:
-
-* reviewed
-* validated
-* deduplicated
-* stored in Supabase
-
----
-
-## 6. Student Practice
-
-Students:
-
-* choose a program
-* select topics and difficulty
-* practice generated questions
-* receive Socratic coaching
-* track progress over time
-
----
-
-# Architecture
-
-## Current Prototype
-
-* Streamlit
-* Python
-* Groq API
-* Local JSON question bank
-
----
-
-## Planned Production Stack
-
-### Frontend
-
-* React + Vite
-* TailwindCSS
-* shadcn/ui
+# Local Development
 
 ### Backend
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+cp .env.example .env  # Edit with your credentials
+uvicorn app.main:app --reload
+```
 
-* FastAPI
+### Frontend
+```bash
+cd frontend
+npm install
+cp .env.example .env  # Edit with API URL
+npm run dev
+```
 
-### Database
+---
 
-* Supabase PostgreSQL
+# Database Tables
 
-### AI Services
+### mathcoach_questions
+Stores practice questions with:
+- question_text, options (A-E), correct_answer
+- topic, difficulty, archetype
+- coaching_hints, misconceptions
+- solution steps
 
-* Groq / OpenAI / Claude
-
-### Rendering
-
-* SVG diagrams
-* KaTeX / MathJax
+### mathcoach_question_blueprints
+Templates for AI question generation with:
+- blueprint_code, blueprint_name
+- primary_topic, difficulty_level
+- generation_pattern, distractor_strategy
+- common_misconceptions, coaching_entry
 
 ---
 
@@ -255,21 +195,20 @@ The system is designed to coach students toward understanding rather than simply
 
 ---
 
-# Current Status
+# Project Status
 
-Prototype Phase:
+**Deployed and functional:**
+- [x] FastAPI backend on Render
+- [x] React frontend on Netlify
+- [x] PostgreSQL database on Supabase
+- [x] Practice mode with quiz flow
+- [x] Socratic coaching integration
+- [x] AI question generation from blueprints
 
-* Waterloo Gauss Grade 7 Arithmetic & Number Sense
-* Socratic coaching
-* timing analytics
-* rotating question bank
-* adaptive tutoring workflow
+**In progress:**
+- [ ] KaTeX/MathJax math rendering
+- [ ] PDF extraction workflow
+- [ ] Student analytics dashboard
+- [ ] Diagram/graph rendering
 
-Planned Next Steps:
-
-* AI question generation
-* Supabase integration
-* program upload workflow
-* reasoning archetype extraction
-* adaptive recommendation engine
-* diagram and graph support
+See [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for detailed progress.

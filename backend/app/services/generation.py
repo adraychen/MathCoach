@@ -17,7 +17,7 @@ from sqlalchemy import text
 from ..config import get_settings
 
 PROMPT_VERSION = "gauss_g7_dev_v1"
-DEFAULT_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+DEFAULT_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3-32b")
 
 
 def now_iso() -> str:
