@@ -168,6 +168,18 @@ export function QuizPage() {
             </CardHeader>
 
             <CardContent className="space-y-6">
+              {/* Visual (if present) */}
+              {currentQuestion.visual?.required && currentQuestion.visual.spec && (
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground mb-2">
+                    Visual: {currentQuestion.visual.type}
+                  </div>
+                  <pre className="text-xs overflow-auto">
+                    {JSON.stringify(currentQuestion.visual.spec, null, 2)}
+                  </pre>
+                </div>
+              )}
+
               {/* Question Text */}
               <div className="text-lg">{currentQuestion.question_text}</div>
 

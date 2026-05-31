@@ -41,6 +41,7 @@ class GeneratedQuestion(BaseModel):
     options: dict[str, str] | None
     correct_answer: str | None
     coaching_hints: list[str] | None
+    visual: dict | None = None
     validation_issues: list[str]
     saved: bool = False
 
@@ -86,6 +87,7 @@ async def generate_questions(
                 options=question.get("options"),
                 correct_answer=question.get("correct_answer"),
                 coaching_hints=question.get("coaching_hints"),
+                visual=question.get("visual"),
                 validation_issues=question.get("_validation_issues", []),
                 saved=saved,
             ))
@@ -96,6 +98,7 @@ async def generate_questions(
                 options=None,
                 correct_answer=None,
                 coaching_hints=None,
+                visual=None,
                 validation_issues=[str(e)],
                 saved=False,
             ))

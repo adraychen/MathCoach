@@ -34,6 +34,7 @@ def model_to_question(db_question: QuestionModel) -> Question:
         distractor_rationale=db_question.distractor_rationale,
         solution=db_question.solution,
         coaching_hints=db_question.coaching_hints or [],
+        visual=db_question.visual,
         metadata=db_question.question_metadata,
     )
 
@@ -118,6 +119,7 @@ async def create_question(
         distractor_rationale=question.distractor_rationale,
         solution=question.solution.model_dump() if question.solution else None,
         coaching_hints=question.coaching_hints,
+        visual=question.visual.model_dump() if question.visual else None,
         question_metadata=question.metadata.model_dump() if question.metadata else None,
     )
 

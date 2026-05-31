@@ -13,6 +13,12 @@ export interface QuestionOptions {
   E: string
 }
 
+export interface QuestionVisual {
+  required: boolean
+  type: string  // bar_graph, line_graph, geometry_diagram, coordinate_grid, table, etc.
+  spec?: Record<string, unknown>
+}
+
 export interface Question {
   id: string
   program: string
@@ -31,6 +37,7 @@ export interface Question {
     key_insight: string
   }
   coaching_hints: string[]
+  visual?: QuestionVisual
 }
 
 export interface QuizStart {

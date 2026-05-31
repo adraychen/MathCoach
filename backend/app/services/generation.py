@@ -104,6 +104,7 @@ Question requirements:
 4. Include distractor_rationale for every wrong answer.
 5. Include coaching_hints with 2-4 progressive hints.
 6. Keep language appropriate for Grade 7.
+7. If visual_required is true, you MUST include a "visual" object with the graph/diagram data.
 
 Return JSON with these keys:
 - id: use format waterloo_gauss_{blueprint.get('blueprint_code')}_{difficulty_id}_{index:04d}
@@ -120,7 +121,16 @@ Return JSON with these keys:
 - distractor_rationale: {{"A": "why wrong or null if correct", ...}}
 - solution: {{"steps": ["step1", "step2"], "key_insight": "main idea"}}
 - coaching_hints: ["hint1", "hint2", "hint3"]
+- visual: {{"required": {str(blueprint.get('visual_required', False)).lower()}, "type": "{blueprint.get('visual_type', 'none')}", "spec": {{...data for rendering the visual...}}}}
 - metadata: {{"source": "ai_generated", "blueprint_code": "{blueprint.get('blueprint_code')}", "created_at": "{created_at}"}}
+
+For visual.spec based on visual_type:
+- bar_graph: {{"title": "...", "x_labels": ["A", "B", "C"], "values": [10, 20, 30], "y_axis_label": "..."}}
+- line_graph: {{"title": "...", "x_labels": ["A", "B", "C"], "values": [10, 20, 30], "y_axis_label": "..."}}
+- geometry_diagram: {{"description": "...", "shapes": [...], "labels": [...], "angles": [...]}}
+- coordinate_grid: {{"points": [{{"x": 1, "y": 2, "label": "A"}}], "x_range": [-5, 5], "y_range": [-5, 5]}}
+- table: {{"headers": ["Col1", "Col2"], "rows": [["a", "b"], ["c", "d"]]}}
+- fraction_area: {{"total_parts": 8, "shaded_parts": 3, "shape": "rectangle"}}
 """.strip()
 
 
@@ -236,6 +246,7 @@ def save_question_to_db(db: Session, question: dict[str, Any]) -> str:
         distractor_rationale=q.get("distractor_rationale"),
         solution=q.get("solution"),
         coaching_hints=q.get("coaching_hints", []),
+        visual=q.get("visual"),
         question_metadata=q.get("metadata"),
     )
 

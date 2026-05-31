@@ -21,6 +21,11 @@ interface GeneratedQuestion {
   options: Record<string, string> | null
   correct_answer: string | null
   coaching_hints: string[] | null
+  visual?: {
+    required: boolean
+    type: string
+    spec?: Record<string, unknown>
+  } | null
   validation_issues: string[]
   saved: boolean
 }
@@ -216,6 +221,15 @@ export function GeneratePage() {
                             {key === q.correct_answer && ' (correct)'}
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {q.visual?.required && q.visual.spec && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded">
+                        <p className="font-medium text-sm mb-2">Visual ({q.visual.type}):</p>
+                        <pre className="text-xs overflow-auto bg-white dark:bg-slate-900 p-2 rounded">
+                          {JSON.stringify(q.visual.spec, null, 2)}
+                        </pre>
                       </div>
                     )}
 

@@ -38,6 +38,13 @@ class QuestionMetadata(BaseModel):
     validation_notes: Optional[str] = None
 
 
+class QuestionVisual(BaseModel):
+    """Visual/diagram data for a question."""
+    required: bool = False
+    type: str = "none"  # bar_graph, line_graph, geometry_diagram, coordinate_grid, table, etc.
+    spec: Optional[dict] = None  # Data for rendering the visual
+
+
 class Question(BaseModel):
     """Full question model."""
     id: str
@@ -54,6 +61,7 @@ class Question(BaseModel):
     distractor_rationale: Optional[dict[str, Optional[str]]] = None
     solution: Optional[QuestionSolution] = None
     coaching_hints: list[str] = []
+    visual: Optional[QuestionVisual] = None
     metadata: Optional[QuestionMetadata] = None
 
 
@@ -72,6 +80,7 @@ class QuestionCreate(BaseModel):
     distractor_rationale: Optional[dict[str, Optional[str]]] = None
     solution: Optional[QuestionSolution] = None
     coaching_hints: list[str] = []
+    visual: Optional[QuestionVisual] = None
     metadata: Optional[QuestionMetadata] = None
 
 
@@ -89,6 +98,7 @@ class QuestionUpdate(BaseModel):
     distractor_rationale: Optional[dict[str, Optional[str]]] = None
     solution: Optional[QuestionSolution] = None
     coaching_hints: Optional[list[str]] = None
+    visual: Optional[QuestionVisual] = None
     metadata: Optional[QuestionMetadata] = None
 
 
