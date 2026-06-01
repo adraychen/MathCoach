@@ -167,6 +167,15 @@ GEOMETRY CONSTRAINTS:
 - Every named angle must be geometrically possible from the point positions.
 - Prefer simple valid structures: triangle angle sum, straight-line supplementary angle, isosceles base angles.
 
+TARGET ANGLE VERIFICATION (required):
+1. Identify the exact target angle asked in the question_text (e.g., ∠ACD).
+2. Store it as target_angle in the JSON.
+3. Compute the measure of target_angle, not a related interior or exterior angle.
+4. If the solution calculates an intermediate angle, clearly label it as intermediate.
+5. computed_answer_value must be the measure of target_angle.
+6. Do not use an intermediate angle as correct_answer.
+7. The visual spec, question text, solution, computed_answer_value, and correct_answer must all refer to the same target angle.
+
 WORDING TEMPLATES (use only these patterns):
 Allowed:
 - "∠ABC is a right angle."
@@ -420,6 +429,7 @@ Return JSON with these keys:
 - options: {{"A": "...", "B": "...", "C": "...", "D": "...", "E": "..."}}
 - correct_answer: one of A-E
 - computed_answer_value: the exact final answer value (e.g., "53" or "120°")
+- target_angle: (for geometry only) the angle being asked for, e.g., "ACD"
 - reasoning_skills: array of skills
 - misconceptions: array of common mistakes
 - distractor_rationale: {{"A": "why wrong or null if correct", "B": "...", ...}}
@@ -442,10 +452,15 @@ VISUAL SPEC FORMATS:
 - table: {{"headers": [...], "rows": [[...], [...]]}}
 - fraction_area: {{"total_parts": 8, "shaded_parts": 3, "shape": "rectangle"}}
 
-LAYER E — COMPUTED ANSWER (required):
-- Set computed_answer_value to the exact final answer from your solution.
-- This value must appear exactly once in options A-E.
-- Example: If the answer is 53, set "computed_answer_value": "53" and include "53" in one option.
+LAYER E — ANSWER-KEY VERIFICATION (required before output):
+1. Determine the final computed answer value from the solution.
+2. Store it in computed_answer_value.
+3. Confirm that computed_answer_value appears exactly once in options A–E.
+4. Set correct_answer to the option letter whose value matches computed_answer_value.
+5. Confirm options[correct_answer] equals computed_answer_value.
+6. Set distractor_rationale[correct_answer] = null.
+7. If the computed answer is not present in the options, replace one distractor with the computed answer.
+8. If the solution, computed_answer_value, options, and correct_answer do not agree, fix them before output.
 """.strip()
 
 
