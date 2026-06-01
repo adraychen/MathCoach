@@ -365,7 +365,7 @@ def call_llm(prompt: str, model: str = DEFAULT_MODEL) -> dict[str, Any]:
             "Content-Type": "application/json"
         },
         json=payload,
-        timeout=90,
+        timeout=60,
     )
 
     if response.status_code >= 400:
@@ -441,7 +441,7 @@ def generate_question(
     blueprint_code: str,
     index: int = 1,
     model: str = DEFAULT_MODEL,
-    max_retries: int = 3,
+    max_retries: int = 2,
 ) -> dict[str, Any]:
     """Generate a single question from a blueprint with automatic retry."""
     blueprint = get_blueprint(db, blueprint_code)
@@ -453,6 +453,7 @@ def generate_question(
     prompt = build_generation_prompt(blueprint, index, distractor_patterns)
 
     last_issues = []
+    question = {}
     for attempt in range(max_retries):
         try:
             question = call_llm(prompt, model)
@@ -484,7 +485,6 @@ def generate_question(
             last_issues = [str(e)]
 
     # All retries failed, return last attempt with issues
-    question = question if 'question' in dir() else {}
     question["_validation_issues"] = last_issues + [f"Failed after {max_retries} retries"]
     question["_blueprint"] = blueprint_code
     question["_hash"] = compute_hash(question) if question.get("question_text") else ""
