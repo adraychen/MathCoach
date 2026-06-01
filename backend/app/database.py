@@ -4,9 +4,10 @@ Uses Supabase Transaction Pooler for connection management.
 """
 
 from functools import lru_cache
-from sqlalchemy import create_engine, Column, String, JSON, Text
+from sqlalchemy import create_engine, Column, String, JSON, Text, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy.pool import QueuePool
+from sqlalchemy.sql import func
 
 from .config import get_settings
 
@@ -52,6 +53,15 @@ class QuestionModel(Base):
     coaching_hints = Column(JSON, default=list)
     visual = Column(JSON, nullable=True)
     question_metadata = Column("metadata", JSON, nullable=True)  # 'metadata' is reserved in SQLAlchemy
+
+    # New columns for direct lookup
+    blueprint_code = Column(String, nullable=True)
+    environment = Column(String, default="dev")
+    review_status = Column(String, default="draft")
+    is_active = Column(Boolean, default=True)
+    visual_required = Column(Boolean, default=False)
+    visual_type = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 def get_db() -> Session:
