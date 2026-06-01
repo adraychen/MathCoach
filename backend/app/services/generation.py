@@ -6,6 +6,7 @@ Adapted from generators/mathcoach_generate_visual_data_questions_groq.py
 import hashlib
 import json
 import os
+import random
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -190,21 +191,20 @@ VISUAL TEMPLATE SELECTION:
 """,
         "arithmetic_progression_membership": """
 LAYER D — BLUEPRINT SAFETY RULES (arithmetic sequences):
-FORMULA:
-- Use a_n = first_term + (n - 1) × common_difference
-- Example: If first_term=5, common_difference=7, then a_100 = 5 + (100-1) × 7 = 5 + 693 = 698
+REQUIRED: Include calculation_data object with these exact fields:
+{
+  "calculation_data": {
+    "first_term": <integer>,
+    "common_difference": <integer>,
+    "term_number": <integer>
+  }
+}
 
-GENERATION STEPS:
-1. Choose first_term (a) and common_difference (d)
-2. Choose term_number (n)
-3. Compute: computed_answer = a + (n - 1) × d
-4. Create 5 options A-E including computed_answer
-5. Set correct_answer to the letter containing computed_answer
+FORMULA: a_n = first_term + (term_number - 1) × common_difference
+Example: first_term=4, common_difference=7, term_number=100
+  → 4 + (100-1) × 7 = 4 + 99 × 7 = 4 + 693 = 697
 
-VERIFICATION:
-- computed_answer must appear exactly once in options A-E
-- options[correct_answer] must equal computed_answer exactly
-- solution final step must show the same computed_answer value
+CRITICAL: The backend will verify your math. If calculation_data values don't match computed_answer_value, the question will be rejected.
 """,
         "visual_data_extraction": """
 LAYER D — BLUEPRINT SAFETY RULES (visual data):
@@ -232,6 +232,128 @@ How to generate: {p.get('how_to_generate_distractor')}
 Coaching strategy: {p.get('wrong_answer_coaching_strategy', '')}""")
 
     return "\n".join(lines)
+
+
+def generate_arithmetic_sequence_data() -> dict[str, Any]:
+    """Generate math data for arithmetic sequence questions.
+
+    Backend controls the math, LLM only writes the prose.
+    """
+    # Generate reasonable values for Grade 7
+    first_term = random.randint(2, 15)
+    common_difference = random.randint(3, 12)
+    term_number = random.choice([8, 10, 12, 15, 20, 25, 50, 100])
+
+    # Compute correct answer: a_n = a + (n-1) * d
+    computed_answer = first_term + (term_number - 1) * common_difference
+
+    # Generate distractors based on known misconceptions
+    distractors = [
+        term_number * common_difference,                           # pure_multiple_trap (no offset)
+        first_term + (term_number - 2) * common_difference,        # off_by_one_low
+        first_term + term_number * common_difference,              # off_by_one_high
+        (term_number - 1) * common_difference,                     # missing_offset (no first_term)
+    ]
+
+    # Remove any distractors that equal the correct answer
+    distractors = [d for d in distractors if d != computed_answer]
+
+    # Add more distractors if needed (close values)
+    while len(distractors) < 4:
+        offset = random.choice([-3, -2, 2, 3, 5, -5])
+        new_distractor = computed_answer + offset
+        if new_distractor > 0 and new_distractor not in distractors and new_distractor != computed_answer:
+            distractors.append(new_distractor)
+
+    # Take exactly 4 distractors
+    distractors = distractors[:4]
+
+    # Create all options and shuffle
+    all_values = [computed_answer] + distractors
+    random.shuffle(all_values)
+
+    # Assign to A-E and sort by value (Waterloo style)
+    all_values.sort()
+    options = {chr(65 + i): str(v) for i, v in enumerate(all_values)}
+
+    # Find correct answer letter
+    correct_answer = None
+    for letter, value in options.items():
+        if int(value) == computed_answer:
+            correct_answer = letter
+            break
+
+    return {
+        "calculation_data": {
+            "first_term": first_term,
+            "common_difference": common_difference,
+            "term_number": term_number,
+            "formula": "first_term + (term_number - 1) * common_difference",
+        },
+        "computed_answer_value": str(computed_answer),
+        "options": options,
+        "correct_answer": correct_answer,
+    }
+
+
+def build_arithmetic_sequence_prompt(
+    blueprint: dict[str, Any],
+    math_data: dict[str, Any],
+    distractor_patterns: list[dict[str, Any]] | None = None,
+) -> str:
+    """Build prompt for arithmetic sequence with pre-computed math."""
+    part_letter, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
+    created_at = now_iso()
+    blueprint_code = blueprint.get('blueprint_code', '')
+
+    calc = math_data["calculation_data"]
+    options_str = json.dumps(math_data["options"], indent=2)
+
+    # Format distractor pattern info
+    distractor_info = ""
+    if distractor_patterns:
+        for p in distractor_patterns:
+            distractor_info += f"\n- {p.get('distractor_pattern_name')}: {p.get('misconception_targeted')}"
+
+    return f"""
+You are writing one Waterloo Gauss Grade 7 arithmetic sequence question.
+
+THE MATH IS ALREADY COMPUTED — DO NOT CHANGE IT:
+- First term: {calc['first_term']}
+- Common difference: {calc['common_difference']}
+- Term number: {calc['term_number']}
+- Correct answer: {math_data['computed_answer_value']}
+- Options (fixed): {options_str}
+- Correct answer letter: {math_data['correct_answer']}
+
+YOUR TASK: Write the question text and explanations. Do not change the math values.
+
+STYLE RULES:
+- Waterloo Gauss Grade 7 style: concise, neutral, contest-like
+- Start with "A sequence begins..." or "The first term of a sequence is..."
+- Show first 3-4 terms to establish the pattern
+- Ask for the {calc['term_number']}th term
+- No hints, no lesson-like wording
+
+DISTRACTOR MISCONCEPTIONS:{distractor_info}
+- pure_multiple_trap: student multiplies term_number × common_difference (forgets first_term)
+- off_by_one: student uses wrong formula (n instead of n-1, or n-2)
+- missing_offset: student computes (n-1) × d but forgets to add first_term
+
+Return valid JSON with these keys:
+- question_text: the question (Waterloo style)
+- solution: {{"steps": ["step1", "step2", ...], "key_insight": "..."}}
+- distractor_rationale: {{"A": "why wrong or null", "B": "...", "C": "...", "D": "...", "E": "..."}}
+- coaching_hints: ["hint1", "hint2", "hint3"]
+
+CRITICAL: Set distractor_rationale["{math_data['correct_answer']}"] = null (this is the correct answer)
+
+Example question_text:
+"A sequence begins 4, 11, 18, 25, ... What is the 100th term of this sequence?"
+
+Example solution:
+{{"steps": ["The sequence has first term 4 and common difference 7.", "Using a_n = a + (n-1)d: a_100 = 4 + (100-1)(7) = 4 + 693 = 697"], "key_insight": "Apply the arithmetic sequence formula with n=100"}}
+""".strip()
 
 
 def build_generation_prompt(
@@ -297,6 +419,7 @@ Return JSON with these keys:
 - question_text: the question (Waterloo style, concise)
 - options: {{"A": "...", "B": "...", "C": "...", "D": "...", "E": "..."}}
 - correct_answer: one of A-E
+- computed_answer_value: the exact final answer value (e.g., "53" or "120°")
 - reasoning_skills: array of skills
 - misconceptions: array of common mistakes
 - distractor_rationale: {{"A": "why wrong or null if correct", "B": "...", ...}}
@@ -319,27 +442,10 @@ VISUAL SPEC FORMATS:
 - table: {{"headers": [...], "rows": [[...], [...]]}}
 - fraction_area: {{"total_parts": 8, "shaded_parts": 3, "shape": "rectangle"}}
 
-LAYER E — FINAL ANSWER-KEY VERIFICATION (required for all questions):
-Before returning JSON, verify:
-1. Compute the correct answer value (numeric or text).
-2. Find which option A-E contains that exact value.
-3. Set correct_answer to that letter.
-4. Confirm: options[correct_answer] == computed_answer.
-5. Confirm: solution final step produces the same value.
-6. Confirm: distractor_rationale[correct_answer] is null.
-7. If computed_answer is not in any option, replace one wrong option with it.
-
-INVALID EXAMPLE (do not output):
-- Solution says "answer is 53"
-- correct_answer is "C"
-- options.C is "57"
-This is WRONG. Fix correct_answer to match the option containing 53.
-
-VALID EXAMPLE:
-- Solution says "answer is 53"
-- options.B is "53"
-- correct_answer is "B"
-- distractor_rationale.B is null
+LAYER E — COMPUTED ANSWER (required):
+- Set computed_answer_value to the exact final answer from your solution.
+- This value must appear exactly once in options A-E.
+- Example: If the answer is 53, set "computed_answer_value": "53" and include "53" in one option.
 """.strip()
 
 
@@ -436,6 +542,185 @@ def compute_hash(question: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def verify_arithmetic_sequence(question: dict[str, Any], blueprint_code: str) -> dict[str, Any]:
+    """Programmatically verify arithmetic sequence calculations."""
+    if blueprint_code != "arithmetic_progression_membership":
+        return question
+
+    calc_data = question.get("calculation_data")
+    if not calc_data or not isinstance(calc_data, dict):
+        question["_arithmetic_issue"] = "missing calculation_data"
+        return question
+
+    try:
+        first_term = int(calc_data.get("first_term", 0))
+        common_diff = int(calc_data.get("common_difference", 0))
+        term_num = int(calc_data.get("term_number", 0))
+
+        # Compute correct answer: a_n = a + (n-1) * d
+        correct_value = first_term + (term_num - 1) * common_diff
+
+        # Check if model's computed_answer_value matches
+        model_value = question.get("computed_answer_value", "")
+        try:
+            model_int = int(str(model_value).strip())
+        except (ValueError, TypeError):
+            model_int = None
+
+        if model_int != correct_value:
+            question["_arithmetic_fixed"] = f"model said {model_value}, correct is {correct_value}"
+            question["computed_answer_value"] = str(correct_value)
+
+            # Also check if correct value is in options, if not replace one
+            options = question.get("options", {})
+            correct_str = str(correct_value)
+            if correct_str not in [str(v) for v in options.values()]:
+                # Replace option E with correct value
+                options["E"] = correct_str
+                question["_option_replaced"] = f"E (was {options.get('E', 'unknown')})"
+
+    except (ValueError, TypeError) as e:
+        question["_arithmetic_issue"] = f"invalid calculation_data: {e}"
+
+    return question
+
+
+def fix_answer_key(question: dict[str, Any]) -> dict[str, Any]:
+    """Fix answer key based on computed_answer_value."""
+    computed = str(question.get("computed_answer_value", "")).strip()
+    if not computed:
+        return question
+
+    options = question.get("options", {})
+
+    # Normalize for comparison (handle "120°" vs "120" etc.)
+    def normalize(val: str) -> str:
+        return str(val).strip().replace("°", "").replace("$", "").replace(",", "")
+
+    computed_norm = normalize(computed)
+
+    matching_letters = [
+        letter for letter, value in options.items()
+        if normalize(str(value)) == computed_norm
+    ]
+
+    if len(matching_letters) == 1:
+        # Fix correct_answer to match the option containing computed value
+        question["correct_answer"] = matching_letters[0]
+        # Fix distractor_rationale
+        if "distractor_rationale" in question:
+            question["distractor_rationale"][matching_letters[0]] = None
+        question["_answer_key_fixed"] = True
+        return question
+
+    if len(matching_letters) == 0:
+        # Computed answer not in options - replace option E
+        options["E"] = computed
+        question["correct_answer"] = "E"
+        if "distractor_rationale" in question:
+            question["distractor_rationale"]["E"] = None
+        question["_answer_key_fixed"] = True
+        question["_option_replaced"] = "E"
+        return question
+
+    # Multiple options contain the same value - mark for review
+    question["_answer_key_issue"] = f"computed_answer_value '{computed}' appears in multiple options: {matching_letters}"
+    return question
+
+
+def generate_arithmetic_sequence_question(
+    db: Session,
+    blueprint: dict[str, Any],
+    distractor_patterns: list[dict[str, Any]],
+    model: str = DEFAULT_MODEL,
+    max_retries: int = 2,
+) -> dict[str, Any]:
+    """Template-assisted generation for arithmetic sequence questions.
+
+    Backend computes the math, LLM only writes the prose.
+    """
+    blueprint_code = blueprint.get("blueprint_code", "")
+    _, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
+
+    last_issues = []
+    for attempt in range(max_retries):
+        try:
+            # Step 1: Backend generates math data
+            math_data = generate_arithmetic_sequence_data()
+
+            # Step 2: Build prompt with fixed math values
+            prompt = build_arithmetic_sequence_prompt(blueprint, math_data, distractor_patterns)
+
+            # Step 3: LLM writes only the prose
+            llm_response = call_llm(prompt, model)
+
+            # Step 4: Merge LLM prose with backend math
+            question = {
+                "id": generate_unique_id(blueprint_code, difficulty_id),
+                "program": "waterloo_gauss",
+                "topic": blueprint.get("primary_topic", ""),
+                "subtopic": blueprint.get("secondary_topic"),
+                "difficulty": difficulty_id,
+                "archetype": blueprint.get("archetype", ""),
+                "question_text": llm_response.get("question_text", ""),
+                "options": math_data["options"],  # From backend, not LLM
+                "correct_answer": math_data["correct_answer"],  # From backend
+                "computed_answer_value": math_data["computed_answer_value"],  # From backend
+                "calculation_data": math_data["calculation_data"],  # From backend
+                "reasoning_skills": ["pattern_recognition", "formula_application"],
+                "misconceptions": ["off_by_one", "pure_multiple_trap"],
+                "distractor_rationale": llm_response.get("distractor_rationale", {}),
+                "solution": llm_response.get("solution", {}),
+                "coaching_hints": llm_response.get("coaching_hints", []),
+                "visual": {"required": False, "type": "none", "spec": {}},
+                "metadata": {
+                    "source": "ai_generated_template_assisted",
+                    "blueprint_code": blueprint_code,
+                    "created_at": now_iso(),
+                },
+            }
+
+            # Step 5: Verify answer key consistency
+            correct_letter = math_data["correct_answer"]
+            correct_value = math_data["computed_answer_value"]
+
+            # Ensure distractor_rationale[correct_answer] is null
+            if "distractor_rationale" in question:
+                question["distractor_rationale"][correct_letter] = None
+
+            # Verify options[correct_answer] == computed_answer_value
+            if question["options"].get(correct_letter) != correct_value:
+                raise ValueError(f"Option mismatch: {correct_letter}={question['options'].get(correct_letter)} != {correct_value}")
+
+            # Validate
+            issues = validate_question(question, blueprint)
+            critical_issues = [i for i in issues if any(x in i for x in [
+                "options must contain", "correct_answer must be",
+                "question_text is required", "coaching_hints are required"
+            ])]
+
+            if not critical_issues:
+                question["_validation_issues"] = issues
+                question["_blueprint"] = blueprint_code
+                question["_hash"] = compute_hash(question)
+                question["_template_assisted"] = True
+                if attempt > 0:
+                    question["_retries"] = attempt
+                return question
+
+            last_issues = issues
+        except Exception as e:
+            last_issues = [str(e)]
+
+    # All retries failed
+    return {
+        "id": generate_unique_id(blueprint_code, difficulty_id),
+        "_validation_issues": last_issues + [f"Failed after {max_retries} retries"],
+        "_blueprint": blueprint_code,
+        "_hash": "",
+    }
+
+
 def generate_question(
     db: Session,
     blueprint_code: str,
@@ -450,6 +735,14 @@ def generate_question(
 
     # Fetch distractor patterns for this blueprint
     distractor_patterns = get_distractor_patterns(db, blueprint_code)
+
+    # Template-assisted generation for arithmetic sequences
+    if blueprint_code == "arithmetic_progression_membership":
+        return generate_arithmetic_sequence_question(
+            db, blueprint, distractor_patterns, model, max_retries
+        )
+
+    # Standard generation for other blueprints
     prompt = build_generation_prompt(blueprint, index, distractor_patterns)
 
     last_issues = []
@@ -457,6 +750,9 @@ def generate_question(
     for attempt in range(max_retries):
         try:
             question = call_llm(prompt, model)
+
+            # Fix answer key based on computed_answer_value
+            question = fix_answer_key(question)
 
             # Override ID with unique timestamp-based ID
             _, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
