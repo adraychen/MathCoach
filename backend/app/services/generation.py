@@ -69,6 +69,7 @@ def get_generation_plan(db: Session) -> list[dict[str, Any]]:
             SELECT
                 p.id,
                 p.blueprint_code,
+                b.blueprint_name,
                 p.difficulty_level,
                 p.evidence_level,
                 p.dev_generation_target,
@@ -77,12 +78,14 @@ def get_generation_plan(db: Session) -> list[dict[str, Any]]:
                 p.notes,
                 COALESCE(COUNT(q.id), 0) AS generated_count
             FROM mathcoach_blueprint_generation_plan p
+            LEFT JOIN mathcoach_question_blueprints b
+                ON b.blueprint_code = p.blueprint_code
             LEFT JOIN mathcoach_questions q
                 ON q.blueprint_code = p.blueprint_code
             WHERE p.program_name = 'Waterloo Gauss'
               AND p.grade = 7
               AND p.is_active = true
-            GROUP BY p.id, p.blueprint_code, p.difficulty_level,
+            GROUP BY p.id, p.blueprint_code, b.blueprint_name, p.difficulty_level,
                      p.evidence_level, p.dev_generation_target,
                      p.requires_visual, p.priority, p.notes
             ORDER BY p.priority, p.blueprint_code

@@ -57,6 +57,7 @@ class GenerateResponse(BaseModel):
 class PlanItem(BaseModel):
     id: str
     blueprint_code: str
+    blueprint_name: str | None
     difficulty_level: str
     evidence_level: str
     dev_generation_target: int

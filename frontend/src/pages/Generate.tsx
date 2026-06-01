@@ -36,6 +36,7 @@ interface GeneratedQuestion {
 interface PlanItem {
   id: string
   blueprint_code: string
+  blueprint_name: string | null
   difficulty_level: string
   evidence_level: string
   dev_generation_target: number
@@ -380,7 +381,7 @@ export function GeneratePage() {
                             : ''
                         }
                       >
-                        <td className="p-2 font-mono text-xs">{item.blueprint_code}</td>
+                        <td className="p-2 text-sm">{item.blueprint_name || item.blueprint_code}</td>
                         <td className="p-2">{item.difficulty_level}</td>
                         <td className="p-2 text-center">{item.requires_visual ? 'Yes' : ''}</td>
                         <td className="p-2 text-center">{item.priority}</td>
