@@ -189,22 +189,22 @@ VISUAL TEMPLATE SELECTION:
 - For "right triangle with point D on a side" (triangle ABC with D on BC) → use right_triangle_with_point
 """,
         "arithmetic_progression_membership": """
-LAYER D — BLUEPRINT SAFETY RULES (repeating cycles):
-CYCLE RULES:
-- State the full cycle clearly.
-- Use 1-based indexing.
-- If term_position mod cycle_length = 0, the answer is the last item in the cycle.
-- If remainder is not 0, the answer is the item at that remainder position.
+LAYER D — BLUEPRINT SAFETY RULES (arithmetic sequences):
+FORMULA:
+- Use a_n = first_term + (n - 1) × common_difference
+- Example: If first_term=5, common_difference=7, then a_100 = 5 + (100-1) × 7 = 5 + 693 = 698
 
-ANSWER-KEY VERIFICATION (required before output):
-1. Compute the correct answer two ways:
-   - Formula method: position mod cycle_length
-   - Direct check: list terms up to position (for small n) or verify formula (for large n)
-2. Confirm the computed value matches the option labeled as correct_answer.
-3. Confirm solution.steps produce the same value as correct_answer.
-4. If any mismatch occurs, fix before output.
-Rule: Do not output a question if the correct_answer letter and solution value disagree.
-Example check: If solution says "answer is 53" but correct_answer is "C" and options.C is "57", this is INVALID.
+GENERATION STEPS:
+1. Choose first_term (a) and common_difference (d)
+2. Choose term_number (n)
+3. Compute: computed_answer = a + (n - 1) × d
+4. Create 5 options A-E including computed_answer
+5. Set correct_answer to the letter containing computed_answer
+
+VERIFICATION:
+- computed_answer must appear exactly once in options A-E
+- options[correct_answer] must equal computed_answer exactly
+- solution final step must show the same computed_answer value
 """,
         "visual_data_extraction": """
 LAYER D — BLUEPRINT SAFETY RULES (visual data):
@@ -261,11 +261,10 @@ Write in Waterloo Gauss Grade 7 style:
 
 LAYER B — SCHEMA RULES:
 - Return valid JSON only. No Markdown. No explanation outside JSON.
-- Use A–E answer choices.
-- Exactly one correct_answer.
+- Use A–E answer choices (all five required).
+- Exactly one correct_answer (a letter A-E).
 - The correct answer must have distractor_rationale = null.
 - Each wrong answer must have a specific misconception-based rationale.
-- The solution must agree with correct_answer.
 - No self-correction wording such as "but wait" or "this contradicts."
 {layer_c}
 {layer_d}
@@ -319,6 +318,28 @@ VISUAL SPEC FORMATS:
 - coordinate_grid: {{"points": [{{"x": 1, "y": 2, "label": "A"}}], "x_range": [-5, 5], "y_range": [-5, 5]}}
 - table: {{"headers": [...], "rows": [[...], [...]]}}
 - fraction_area: {{"total_parts": 8, "shaded_parts": 3, "shape": "rectangle"}}
+
+LAYER E — FINAL ANSWER-KEY VERIFICATION (required for all questions):
+Before returning JSON, verify:
+1. Compute the correct answer value (numeric or text).
+2. Find which option A-E contains that exact value.
+3. Set correct_answer to that letter.
+4. Confirm: options[correct_answer] == computed_answer.
+5. Confirm: solution final step produces the same value.
+6. Confirm: distractor_rationale[correct_answer] is null.
+7. If computed_answer is not in any option, replace one wrong option with it.
+
+INVALID EXAMPLE (do not output):
+- Solution says "answer is 53"
+- correct_answer is "C"
+- options.C is "57"
+This is WRONG. Fix correct_answer to match the option containing 53.
+
+VALID EXAMPLE:
+- Solution says "answer is 53"
+- options.B is "53"
+- correct_answer is "B"
+- distractor_rationale.B is null
 """.strip()
 
 
@@ -420,28 +441,53 @@ def generate_question(
     blueprint_code: str,
     index: int = 1,
     model: str = DEFAULT_MODEL,
+    max_retries: int = 3,
 ) -> dict[str, Any]:
-    """Generate a single question from a blueprint."""
+    """Generate a single question from a blueprint with automatic retry."""
     blueprint = get_blueprint(db, blueprint_code)
     if not blueprint:
         raise ValueError(f"Blueprint not found: {blueprint_code}")
 
     # Fetch distractor patterns for this blueprint
     distractor_patterns = get_distractor_patterns(db, blueprint_code)
-
     prompt = build_generation_prompt(blueprint, index, distractor_patterns)
-    question = call_llm(prompt, model)
 
-    # Override ID with unique timestamp-based ID
-    _, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
-    question["id"] = generate_unique_id(blueprint_code, difficulty_id)
+    last_issues = []
+    for attempt in range(max_retries):
+        try:
+            question = call_llm(prompt, model)
 
-    # Validate (pass blueprint to check visual requirements)
-    issues = validate_question(question, blueprint)
-    question["_validation_issues"] = issues
+            # Override ID with unique timestamp-based ID
+            _, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
+            question["id"] = generate_unique_id(blueprint_code, difficulty_id)
+
+            # Validate (pass blueprint to check visual requirements)
+            issues = validate_question(question, blueprint)
+
+            # If no critical issues, return
+            critical_issues = [i for i in issues if any(x in i for x in [
+                "options must contain", "correct_answer must be",
+                "question_text is required", "coaching_hints are required",
+                "visual is required"
+            ])]
+
+            if not critical_issues:
+                question["_validation_issues"] = issues
+                question["_blueprint"] = blueprint_code
+                question["_hash"] = compute_hash(question)
+                if attempt > 0:
+                    question["_retries"] = attempt
+                return question
+
+            last_issues = issues
+        except Exception as e:
+            last_issues = [str(e)]
+
+    # All retries failed, return last attempt with issues
+    question = question if 'question' in dir() else {}
+    question["_validation_issues"] = last_issues + [f"Failed after {max_retries} retries"]
     question["_blueprint"] = blueprint_code
-    question["_hash"] = compute_hash(question)
-
+    question["_hash"] = compute_hash(question) if question.get("question_text") else ""
     return question
 
 
