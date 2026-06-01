@@ -96,9 +96,16 @@ async def generate_questions(
     db: Session = Depends(get_db),
 ):
     """Generate questions from a blueprint."""
+    import asyncio
+
     questions = []
+    RATE_LIMIT_DELAY = 45  # seconds between questions for Groq rate limit
 
     for i in range(1, request.count + 1):
+        # Add delay between questions (not before the first one)
+        if i > 1:
+            await asyncio.sleep(RATE_LIMIT_DELAY)
+
         try:
             question = generate_question(db, request.blueprint_code, index=i)
 
