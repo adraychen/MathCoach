@@ -99,7 +99,7 @@ async def generate_questions(
     import asyncio
 
     questions = []
-    RATE_LIMIT_DELAY = 45  # seconds between questions for Groq rate limit
+    RATE_LIMIT_DELAY = 2  # seconds between questions (OpenRouter paid has no rate limits)
 
     for i in range(1, request.count + 1):
         # Add delay between questions (not before the first one)
