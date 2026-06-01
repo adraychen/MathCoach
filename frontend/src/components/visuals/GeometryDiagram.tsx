@@ -45,6 +45,9 @@ export function GeometryDiagram({ spec }: GeometryDiagramProps) {
     case 'right_triangle_with_point':
       return renderRightTriangleWithPoint(spec, width, height)
 
+    case 'right_angle_with_ray':
+      return renderRightAngleWithRay(spec, width, height)
+
     default:
       // Fallback for description-based or unknown types
       return (
@@ -382,6 +385,75 @@ function renderRightTriangleWithPoint(spec: GeometryDiagramProps['spec'], width:
 
         {/* 90° label at B */}
         <text x={B.x + 22} y={B.y - 20} textAnchor="middle" className="text-xs fill-blue-600 font-medium">90°</text>
+      </svg>
+    </div>
+  )
+}
+
+// Right angle at vertex B with rays BA and BC, point D on BC
+function renderRightAngleWithRay(spec: GeometryDiagramProps['spec'], width: number, height: number) {
+  const { angle_abd, angle_dbc, target_angle } = spec as any
+
+  // B is at the corner, A is up, C is right, D is on BC
+  const B = { x: 60, y: 160 }
+  const A = { x: 60, y: 40 }      // straight up from B
+  const C = { x: 260, y: 160 }    // straight right from B
+  const D = { x: 140, y: 160 }    // on segment BC
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={width} height={height} className="bg-white rounded border">
+        {/* Ray BA (vertical) */}
+        <line x1={B.x} y1={B.y} x2={A.x} y2={A.y} stroke="#1e40af" strokeWidth={2} />
+
+        {/* Ray BC (horizontal) */}
+        <line x1={B.x} y1={B.y} x2={C.x} y2={C.y} stroke="#1e40af" strokeWidth={2} />
+
+        {/* Line BD (to show the division) - dashed to point D */}
+        <line x1={B.x} y1={B.y} x2={D.x} y2={D.y} stroke="#1e40af" strokeWidth={2} strokeDasharray="4,2" />
+
+        {/* Right angle marker at B */}
+        <rect x={B.x} y={B.y - 18} width={18} height={18} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+
+        {/* Angle arc for ABD */}
+        <path
+          d={`M ${B.x} ${B.y - 35} A 35 35 0 0 1 ${B.x + 35} ${B.y}`}
+          fill="none"
+          stroke="#3b82f6"
+          strokeWidth={1.5}
+        />
+
+        {/* Vertex labels */}
+        <text x={A.x} y={A.y - 10} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">A</text>
+        <text x={B.x - 15} y={B.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">B</text>
+        <text x={C.x + 10} y={C.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">C</text>
+        <text x={D.x} y={D.y + 18} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">D</text>
+
+        {/* Point marker at D */}
+        <circle cx={D.x} cy={D.y} r={4} fill="#1e40af" />
+
+        {/* Angle ABD label */}
+        <text
+          x={B.x + 20}
+          y={B.y - 45}
+          textAnchor="middle"
+          className={`text-xs font-medium ${target_angle === 'ABD' ? 'fill-red-600' : 'fill-blue-600'}`}
+        >
+          {target_angle === 'ABD' ? '?' : `${angle_abd || ''}°`}
+        </text>
+
+        {/* Angle DBC label */}
+        <text
+          x={B.x + 55}
+          y={B.y - 8}
+          textAnchor="middle"
+          className={`text-xs font-medium ${target_angle === 'DBC' ? 'fill-red-600' : 'fill-blue-600'}`}
+        >
+          {target_angle === 'DBC' ? '?' : `${angle_dbc || ''}°`}
+        </text>
+
+        {/* 90° indicator */}
+        <text x={B.x + 25} y={B.y - 22} textAnchor="middle" className="text-[10px] fill-slate-500">90°</text>
       </svg>
     </div>
   )

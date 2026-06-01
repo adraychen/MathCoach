@@ -281,7 +281,7 @@ VISUAL SPEC FORMATS:
   * triangle_exterior: {{"diagram_type": "triangle_exterior", "angle_a": 60, "angle_b": 50, "angle_c": 70, "exterior_angle": 110, "target_angle": "ACD"}}
   * isosceles_triangle: {{"diagram_type": "isosceles_triangle", "vertex_angle": 40, "base_angle": 70, "target_angle": "ACD"}}
   * intersecting_lines: {{"diagram_type": "intersecting_lines", "angle_1": 35, "angle_2": 55, "target_angle": "2"}}
-  * right_triangle_with_point: {{"diagram_type": "right_triangle_with_point", "angle_abd": 35, "angle_dbc": 55, "target_angle": "DBC"}}
+  * right_angle_with_ray: {{"diagram_type": "right_angle_with_ray", "angle_abd": 35, "angle_dbc": 55, "target_angle": "DBC"}} (right angle at B, rays BA and BC, point D on BC)
   Use target_angle to indicate which angle is the unknown (shown as "?")
 - coordinate_grid: {{"points": [{{"x": 1, "y": 2, "label": "A"}}], "x_range": [-5, 5], "y_range": [-5, 5]}}
 - table: {{"headers": [...], "rows": [[...], [...]]}}
