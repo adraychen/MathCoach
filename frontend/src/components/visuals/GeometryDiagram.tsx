@@ -390,70 +390,102 @@ function renderRightTriangleWithPoint(spec: GeometryDiagramProps['spec'], width:
   )
 }
 
-// Right angle at vertex B with rays BA and BC, point D on BC
+// Right angle at vertex B with rays BA and BC, ray BD divides the angle
 function renderRightAngleWithRay(spec: GeometryDiagramProps['spec'], width: number, height: number) {
   const { angle_abd, angle_dbc, target_angle } = spec as any
 
-  // B is at the corner, A is up, C is right, D is on BC
-  const B = { x: 60, y: 160 }
-  const A = { x: 60, y: 40 }      // straight up from B
-  const C = { x: 260, y: 160 }    // straight right from B
-  const D = { x: 140, y: 160 }    // on segment BC
+  // B is at the corner (vertex of right angle)
+  // A is up (end of ray BA), C is right (end of ray BC)
+  // D is on ray BD which divides the 90° angle
+  const B = { x: 80, y: 160 }
+  const A = { x: 80, y: 40 }       // straight up from B
+  const C = { x: 260, y: 160 }     // straight right from B
+
+  // Calculate D position based on angle_abd
+  // angle_abd is measured from BA toward BC (clockwise in standard math, but counter-clockwise in SVG)
+  // BA points up (-90° in SVG), BC points right (0° in SVG)
+  // If angle_abd = 35°, then BD is at -90° + 35° = -55° from horizontal
+  const abdDegrees = Number(angle_abd) || 35
+  const rayLength = 100
+  // In SVG: -90° is up, 0° is right. angle_abd rotates from up toward right.
+  // SVG angle for BD = -90 + angle_abd degrees
+  const bdAngleRad = ((-90 + abdDegrees) * Math.PI) / 180
+  const D = {
+    x: B.x + rayLength * Math.cos(bdAngleRad),
+    y: B.y + rayLength * Math.sin(bdAngleRad)  // sin is negative for negative angles, so y goes up
+  }
+
+  // Arc positions for angle indicators
+  const arcRadius = 40
+  const abdEndAngleRad = bdAngleRad
+  const abdArcEnd = {
+    x: B.x + arcRadius * Math.cos(abdEndAngleRad),
+    y: B.y + arcRadius * Math.sin(abdEndAngleRad)
+  }
+  const dbcArcStart = {
+    x: B.x + arcRadius * Math.cos(bdAngleRad),
+    y: B.y + arcRadius * Math.sin(bdAngleRad)
+  }
 
   return (
     <div className="flex flex-col items-center">
       <svg width={width} height={height} className="bg-white rounded border">
-        {/* Ray BA (vertical) */}
+        {/* Ray BA (vertical up) */}
         <line x1={B.x} y1={B.y} x2={A.x} y2={A.y} stroke="#1e40af" strokeWidth={2} />
 
-        {/* Ray BC (horizontal) */}
+        {/* Ray BC (horizontal right) */}
         <line x1={B.x} y1={B.y} x2={C.x} y2={C.y} stroke="#1e40af" strokeWidth={2} />
 
-        {/* Line BD (to show the division) - dashed to point D */}
-        <line x1={B.x} y1={B.y} x2={D.x} y2={D.y} stroke="#1e40af" strokeWidth={2} strokeDasharray="4,2" />
+        {/* Ray BD (divides the angle) */}
+        <line x1={B.x} y1={B.y} x2={D.x} y2={D.y} stroke="#1e40af" strokeWidth={2} />
 
-        {/* Right angle marker at B */}
-        <rect x={B.x} y={B.y - 18} width={18} height={18} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+        {/* Right angle marker at B (small square) */}
+        <rect x={B.x} y={B.y - 15} width={15} height={15} fill="none" stroke="#94a3b8" strokeWidth={1} />
 
-        {/* Angle arc for ABD */}
+        {/* Arc for angle ABD (from A direction to D direction) */}
         <path
-          d={`M ${B.x} ${B.y - 35} A 35 35 0 0 1 ${B.x + 35} ${B.y}`}
+          d={`M ${B.x} ${B.y - arcRadius} A ${arcRadius} ${arcRadius} 0 0 1 ${abdArcEnd.x} ${abdArcEnd.y}`}
           fill="none"
           stroke="#3b82f6"
-          strokeWidth={1.5}
+          strokeWidth={2}
+        />
+
+        {/* Arc for angle DBC (from D direction to C direction) */}
+        <path
+          d={`M ${dbcArcStart.x} ${dbcArcStart.y} A ${arcRadius} ${arcRadius} 0 0 1 ${B.x + arcRadius} ${B.y}`}
+          fill="none"
+          stroke="#22c55e"
+          strokeWidth={2}
         />
 
         {/* Vertex labels */}
         <text x={A.x} y={A.y - 10} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">A</text>
         <text x={B.x - 15} y={B.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">B</text>
         <text x={C.x + 10} y={C.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">C</text>
-        <text x={D.x} y={D.y + 18} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">D</text>
+        <text x={D.x + 12} y={D.y - 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">D</text>
 
         {/* Point marker at D */}
         <circle cx={D.x} cy={D.y} r={4} fill="#1e40af" />
 
-        {/* Angle ABD label */}
+        {/* Angle ABD label - positioned along the ABD arc */}
         <text
-          x={B.x + 20}
-          y={B.y - 45}
+          x={B.x + 18}
+          y={B.y - 50}
           textAnchor="middle"
           className={`text-xs font-medium ${target_angle === 'ABD' ? 'fill-red-600' : 'fill-blue-600'}`}
         >
           {target_angle === 'ABD' ? '?' : `${angle_abd || ''}°`}
         </text>
 
-        {/* Angle DBC label */}
+        {/* Angle DBC label - positioned along the DBC arc */}
         <text
-          x={B.x + 55}
-          y={B.y - 8}
+          x={B.x + 50}
+          y={B.y - 20}
           textAnchor="middle"
-          className={`text-xs font-medium ${target_angle === 'DBC' ? 'fill-red-600' : 'fill-blue-600'}`}
+          className={`text-xs font-medium ${target_angle === 'DBC' ? 'fill-red-600' : 'fill-green-600'}`}
         >
           {target_angle === 'DBC' ? '?' : `${angle_dbc || ''}°`}
         </text>
-
-        {/* 90° indicator */}
-        <text x={B.x + 25} y={B.y - 22} textAnchor="middle" className="text-[10px] fill-slate-500">90°</text>
       </svg>
     </div>
   )
