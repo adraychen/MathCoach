@@ -76,7 +76,10 @@ Students can:
 
 ## Question Generation (Admin)
 * Plan-based generation with blueprint priorities
-* 4-layer prompt structure (style rules, schema, distractor patterns, safety rules)
+* 5-layer prompt structure (style, schema, distractors, safety rules, verification)
+* Two generation modes:
+  - **Standard**: LLM generates full question with answer-key fix
+  - **Template-assisted**: Backend computes math, LLM writes prose (for arithmetic sequences)
 * AI generates questions via OpenRouter (`qwen/qwen3-32b`)
 * SVG-based visual rendering (geometry diagrams, bar graphs)
 * Automatic validation and database save

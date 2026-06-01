@@ -257,6 +257,17 @@ Using **PostgreSQL direct connection via Supabase Transaction Pooler** (SQLAlche
 - Fixed geometry diagram templates
   - right_angle_with_ray: D on ray dividing 90° angle
   - Added template selection guidance in Layer D
+- Added template-assisted generation for arithmetic sequences
+  - Backend computes: math values, options, answer key
+  - LLM writes: question text, solution, coaching hints
+  - Eliminates calculation and answer-key mapping errors
+- Added answer-key fix system
+  - computed_answer_value field in JSON schema
+  - fix_answer_key() function ensures correct_answer matches computed value
+- Validated blueprints:
+  - arithmetic_progression_membership: dev_validated (template-assisted)
+  - visual_data_extraction: dev_validated
+  - angle_deduction_fundamentals: pending validation
 
 ### Key Fixes Applied
 - Python version pinned to 3.11.4 (render.yaml, runtime.txt)
