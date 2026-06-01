@@ -1,4 +1,5 @@
 import { BarGraph } from './BarGraph'
+import { GeometryDiagram } from './GeometryDiagram'
 
 interface VisualRendererProps {
   type: string
@@ -9,6 +10,9 @@ export function VisualRenderer({ type, spec }: VisualRendererProps) {
   switch (type) {
     case 'bar_graph':
       return <BarGraph spec={spec as Parameters<typeof BarGraph>[0]['spec']} />
+
+    case 'geometry_diagram':
+      return <GeometryDiagram spec={spec as Parameters<typeof GeometryDiagram>[0]['spec']} />
 
     case 'line_graph':
       // TODO: Implement LineGraph component
@@ -26,17 +30,6 @@ export function VisualRenderer({ type, spec }: VisualRendererProps) {
       return (
         <div className="p-4 bg-muted rounded text-center text-sm text-muted-foreground">
           Coordinate grid visualization coming soon
-          <pre className="mt-2 text-xs text-left overflow-auto">
-            {JSON.stringify(spec, null, 2)}
-          </pre>
-        </div>
-      )
-
-    case 'geometry_diagram':
-      // TODO: Implement GeometryDiagram component
-      return (
-        <div className="p-4 bg-muted rounded text-center text-sm text-muted-foreground">
-          Geometry diagram visualization coming soon
           <pre className="mt-2 text-xs text-left overflow-auto">
             {JSON.stringify(spec, null, 2)}
           </pre>
