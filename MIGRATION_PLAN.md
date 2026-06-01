@@ -178,7 +178,8 @@ POST   /api/generation/generate     # Generate new questions from blueprint
 ### Backend (Render)
 ```
 SUPABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
-GROQ_API_KEY=your-groq-key
+GROQ_API_KEY=your-groq-key           # For Socratic coaching
+OPENROUTER_API_KEY=your-openrouter-key # For question generation
 CORS_ORIGINS=https://mathcoach.netlify.app
 ENVIRONMENT=production
 ```
@@ -199,12 +200,13 @@ Using **PostgreSQL direct connection via Supabase Transaction Pooler** (SQLAlche
 ## AI Models
 
 ### Question Generation
-- Model: `qwen/qwen3-32b` via Groq API
+- Model: `qwen/qwen3-32b` via **OpenRouter API**
 - Good for math problems and structured JSON output
-- Rate limit: ~12k tokens/minute on free tier
+- 4-layer prompt: style rules, schema, distractor patterns, safety rules
+- Rate limit: 2 seconds between questions (paid tier)
 
 ### Socratic Coaching
-- Model: `llama-3.3-70b-versatile` via Groq API
+- Model: `llama-3.3-70b-versatile` via **Groq API**
 - Used for coaching hints and misconception feedback
 
 ---
@@ -228,17 +230,48 @@ Using **PostgreSQL direct connection via Supabase Transaction Pooler** (SQLAlche
   - Generate page in frontend
   - Using qwen/qwen3-32b model
 
+### 2026-05-31
+- Added 4-layer prompt structure for question generation
+  - Layer A: Global style rules (Waterloo Gauss)
+  - Layer B: Schema rules (JSON format)
+  - Layer C: Distractor patterns (from database)
+  - Layer D: Blueprint-specific safety rules
+- Added plan-based generation
+  - /api/generation/plan endpoint
+  - /api/generation/generate-next endpoint
+  - Priority-based blueprint selection
+- Added SVG visual rendering
+  - GeometryDiagram component (6 templates)
+  - BarGraph component
+  - VisualRenderer router
+- Added database tables
+  - mathcoach_blueprint_distractor_patterns
+  - mathcoach_blueprint_generation_plan
+  - Extended mathcoach_questions with blueprint_code, visual, environment, review_status
+
+### 2026-06-01
+- Switched question generation from Groq to OpenRouter
+  - Removed Groq rate limit issues (6000 TPM)
+  - OpenRouter paid tier has no platform limits
+  - Reduced delay from 45s to 2s between questions
+- Fixed geometry diagram templates
+  - right_angle_with_ray: D on ray dividing 90° angle
+  - Added template selection guidance in Layer D
+
 ### Key Fixes Applied
 - Python version pinned to 3.11.4 (render.yaml, runtime.txt)
 - Renamed `metadata` to `question_metadata` (SQLAlchemy reserved word)
 - CORS_ORIGINS changed from list to comma-separated string
 - UUID to string conversion for blueprint IDs
+- Timestamp-based question IDs to avoid duplicates
+- max_tokens increased to 4500 for complex questions
 
 ---
 
 ## Next Steps
 
-1. **Add sample questions** - Insert test questions to enable Practice mode
+1. **Complete question generation** - Generate questions for all blueprints in plan
 2. **KaTeX integration** - Render math formulas in questions
-3. **PDF extraction** - Port extraction workflow from Streamlit
-4. **Student analytics** - Track scores and progress over time
+3. **Additional visual types** - Line graph, coordinate grid, table, fraction area
+4. **PDF extraction** - Port extraction workflow from Streamlit
+5. **Student analytics** - Track scores and progress over time

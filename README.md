@@ -60,8 +60,8 @@ The platform is designed to help students learn how to think rather than simply 
 * Supabase PostgreSQL (Transaction Pooler)
 
 ### AI Services
-* Groq API with `qwen/qwen3-32b` model
-* Used for question generation and Socratic coaching
+* **Question Generation**: OpenRouter API with `qwen/qwen3-32b` model
+* **Socratic Coaching**: Groq API with `llama-3.3-70b-versatile` model
 
 ---
 
@@ -75,10 +75,11 @@ Students can:
 * View results with score breakdown
 
 ## Question Generation (Admin)
-* Select from blueprint templates
-* AI generates new questions matching the blueprint style
-* Validate and save to database
-* Uses `qwen/qwen3-32b` for math-focused generation
+* Plan-based generation with blueprint priorities
+* 4-layer prompt structure (style rules, schema, distractor patterns, safety rules)
+* AI generates questions via OpenRouter (`qwen/qwen3-32b`)
+* SVG-based visual rendering (geometry diagrams, bar graphs)
+* Automatic validation and database save
 
 ## Socratic Coaching
 Instead of giving direct answers, Math Coach:
@@ -119,7 +120,9 @@ DELETE /api/questions/{id}          # Delete question
 ### Generation
 ```
 GET    /api/generation/blueprints   # List available blueprints
-POST   /api/generation/generate     # Generate new questions
+POST   /api/generation/generate     # Generate questions from blueprint
+GET    /api/generation/plan         # Get generation plan with progress
+POST   /api/generation/generate-next # Generate next question per plan
 ```
 
 ---
@@ -129,7 +132,8 @@ POST   /api/generation/generate     # Generate new questions
 ### Backend (Render)
 ```
 SUPABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
-GROQ_API_KEY=your-groq-key
+GROQ_API_KEY=your-groq-key           # For Socratic coaching (Llama)
+OPENROUTER_API_KEY=your-openrouter-key # For question generation (Qwen)
 CORS_ORIGINS=https://mathcoach.netlify.app
 ENVIRONMENT=production
 ```
@@ -168,9 +172,10 @@ npm run dev
 ### mathcoach_questions
 Stores practice questions with:
 - question_text, options (A-E), correct_answer
-- topic, difficulty, archetype
+- topic, difficulty, archetype, blueprint_code
 - coaching_hints, misconceptions
-- solution steps
+- solution steps, visual spec
+- environment, review_status, is_active
 
 ### mathcoach_question_blueprints
 Templates for AI question generation with:
@@ -178,6 +183,18 @@ Templates for AI question generation with:
 - primary_topic, difficulty_level
 - generation_pattern, distractor_strategy
 - common_misconceptions, coaching_entry
+- visual_required, visual_type
+
+### mathcoach_blueprint_distractor_patterns
+Distractor patterns for each blueprint:
+- distractor_pattern_name, wrong_answer_logic
+- misconception_targeted, how_to_generate_distractor
+- wrong_answer_coaching_strategy
+
+### mathcoach_blueprint_generation_plan
+Generation plan with priorities:
+- blueprint_code, difficulty_level, evidence_level
+- dev_generation_target, requires_visual, priority
 
 ---
 
@@ -202,13 +219,17 @@ The system is designed to coach students toward understanding rather than simply
 - [x] React frontend on Netlify
 - [x] PostgreSQL database on Supabase
 - [x] Practice mode with quiz flow
-- [x] Socratic coaching integration
-- [x] AI question generation from blueprints
+- [x] Socratic coaching integration (Groq + Llama)
+- [x] AI question generation from blueprints (OpenRouter + Qwen)
+- [x] 4-layer prompt structure with distractor patterns
+- [x] Plan-based generation with priorities
+- [x] SVG geometry diagrams (triangle, exterior angle, isosceles, right angle)
+- [x] SVG bar graph rendering
 
 **In progress:**
 - [ ] KaTeX/MathJax math rendering
 - [ ] PDF extraction workflow
 - [ ] Student analytics dashboard
-- [ ] Diagram/graph rendering
+- [ ] Additional visual types (line graph, coordinate grid, table)
 
 See [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for detailed progress.
