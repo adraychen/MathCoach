@@ -294,7 +294,7 @@ def call_groq(prompt: str, model: str = DEFAULT_MODEL) -> dict[str, Any]:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.7,
-        "max_tokens": 3000,
+        "max_tokens": 4500,
         "response_format": {"type": "json_object"},
     }
 
