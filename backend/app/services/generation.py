@@ -158,12 +158,28 @@ def get_layer_d_safety_rules(blueprint_code: str) -> str:
     rules = {
         "angle_deduction_fundamentals": """
 LAYER D — BLUEPRINT SAFETY RULES (geometry):
+GEOMETRY CONSTRAINTS:
 - Text, visual spec, and solution must describe the same diagram.
 - Do not assign a non-180° angle to three collinear points.
 - If D lies on the extension of BC beyond C, then B, C, and D are collinear and ∠BCD = 180°.
 - If asking for an exterior angle at C, use ∠ACD, not ∠BCD.
 - Every named angle must be geometrically possible from the point positions.
 - Prefer simple valid structures: triangle angle sum, straight-line supplementary angle, isosceles base angles.
+
+WORDING TEMPLATES (use only these patterns):
+Allowed:
+- "∠ABC is a right angle."
+- "A, B, and C lie on a straight line."
+- "Point D lies on the extension of BC beyond C."
+- "In triangle ABC, ∠A = __° and ∠B = __°."
+- "What is the measure of ∠___?"
+Forbidden:
+- "angle ABD forms a right angle with ray BD"
+- "ray forms an angle with an angle"
+- "CD is a straight line" (use "C, D, and E lie on a straight line")
+- "angle DBC is a straight line"
+Rule: Every angle must be named using three points, with the vertex as the middle letter.
+
 VISUAL TEMPLATE SELECTION:
 - For "find the missing angle in a triangle" → use triangle_angles
 - For "exterior angle of a triangle" → use triangle_exterior
@@ -174,11 +190,21 @@ VISUAL TEMPLATE SELECTION:
 """,
         "arithmetic_progression_membership": """
 LAYER D — BLUEPRINT SAFETY RULES (repeating cycles):
+CYCLE RULES:
 - State the full cycle clearly.
 - Use 1-based indexing.
 - If term_position mod cycle_length = 0, the answer is the last item in the cycle.
 - If remainder is not 0, the answer is the item at that remainder position.
-- correct_answer, solution, and distractor_rationale must agree.
+
+ANSWER-KEY VERIFICATION (required before output):
+1. Compute the correct answer two ways:
+   - Formula method: position mod cycle_length
+   - Direct check: list terms up to position (for small n) or verify formula (for large n)
+2. Confirm the computed value matches the option labeled as correct_answer.
+3. Confirm solution.steps produce the same value as correct_answer.
+4. If any mismatch occurs, fix before output.
+Rule: Do not output a question if the correct_answer letter and solution value disagree.
+Example check: If solution says "answer is 53" but correct_answer is "C" and options.C is "57", this is INVALID.
 """,
         "visual_data_extraction": """
 LAYER D — BLUEPRINT SAFETY RULES (visual data):
