@@ -140,7 +140,8 @@ def get_distractor_patterns(db: Session, blueprint_code: str) -> list[dict[str, 
                 distractor_pattern_name,
                 wrong_answer_logic,
                 misconception_targeted,
-                how_to_generate_distractor
+                how_to_generate_distractor,
+                wrong_answer_coaching_strategy
             FROM mathcoach_blueprint_distractor_patterns
             WHERE blueprint_code = :code AND is_active = true
         """),
@@ -149,61 +150,50 @@ def get_distractor_patterns(db: Session, blueprint_code: str) -> list[dict[str, 
     return [dict(row._mapping) for row in result]
 
 
-def get_blueprint_specific_rules(blueprint_code: str) -> str:
-    """Return blueprint-specific generation rules."""
+def get_layer_d_safety_rules(blueprint_code: str) -> str:
+    """Return Layer D: blueprint-specific safety rules."""
     rules = {
         "angle_deduction_fundamentals": """
-GEOMETRY CONSISTENCY RULES (CRITICAL):
-- The text, visual spec, and solution must describe the SAME diagram.
-- Do NOT label an angle formed by three collinear points as anything other than 180°.
-- If D lies on the extension of BC beyond C, then B, C, D are collinear and angle BCD is exactly 180°.
-- Do NOT say "angle BCD = 120°" if B, C, and D are collinear on a straight line.
-- If using an exterior angle, name it with non-collinear rays (e.g., angle ACD), not the straight-line angle.
-- Every named angle must be geometrically possible from the described points.
-- Avoid unnecessary point extensions unless the target angle requires them.
-- Prefer simple valid structures: triangle angle sum, straight-line supplementary angles, isosceles base angles.
-- Before finalizing, verify that the diagram description, labels, correct answer, and solution do not contradict each other.
-
-ALLOWED FIRST-ROUND ANGLE TEMPLATES:
-1. Triangle with two known interior angles; ask for third interior angle.
-2. Triangle with two known interior angles; side extended at one vertex; ask for exterior angle.
-3. Isosceles triangle with vertex angle known; ask for base angle.
-4. Isosceles triangle with base angle known; ask for exterior angle at a base vertex.
+LAYER D — BLUEPRINT SAFETY RULES (geometry):
+- Text, visual spec, and solution must describe the same diagram.
+- Do not assign a non-180° angle to three collinear points.
+- If D lies on the extension of BC beyond C, then B, C, and D are collinear and ∠BCD = 180°.
+- If asking for an exterior angle at C, use ∠ACD, not ∠BCD.
+- Every named angle must be geometrically possible from the point positions.
+- Prefer simple valid structures: triangle angle sum, straight-line supplementary angle, isosceles base angles.
 """,
         "arithmetic_progression_membership": """
-SEQUENCE CONSISTENCY RULES (CRITICAL):
-- State the complete repeating cycle clearly in the question.
-- Identify cycle_length explicitly in your solution.
-- Choose term_position and compute term_position ÷ cycle_length.
-- If remainder = 0, the correct value is the LAST item in the cycle.
-- If remainder != 0, the correct value is the item at that 1-based remainder position.
-- The correct_answer, distractor_rationale, and solution MUST agree.
-- Do NOT include self-correction language like "but wait" or "this contradicts."
-- Double-check: cycle length, term position, division, remainder, and final answer must all be consistent.
+LAYER D — BLUEPRINT SAFETY RULES (repeating cycles):
+- State the full cycle clearly.
+- Use 1-based indexing.
+- If term_position mod cycle_length = 0, the answer is the last item in the cycle.
+- If remainder is not 0, the answer is the item at that remainder position.
+- correct_answer, solution, and distractor_rationale must agree.
 """,
         "visual_data_extraction": """
-VISUAL DATA RULES:
+LAYER D — BLUEPRINT SAFETY RULES (visual data):
 - Start the question with "In the graph," or "Based on the bar graph shown,".
 - The visual spec values and x_labels must match what the question asks about.
 - The correct answer must be directly readable from the visual data.
-- Do NOT require calculations beyond simple comparison or reading values.
 """,
     }
     return rules.get(blueprint_code, "")
 
 
-def format_distractor_patterns(patterns: list[dict[str, Any]]) -> str:
-    """Format distractor patterns for inclusion in the prompt."""
+def format_layer_c_distractor_patterns(patterns: list[dict[str, Any]]) -> str:
+    """Format Layer C: distractor patterns from database."""
     if not patterns:
         return ""
 
-    lines = ["\nDISTRACTOR PATTERNS (use these to create plausible wrong answers):"]
+    lines = ["\nLAYER C — DISTRACTOR PATTERNS:"]
     for p in patterns:
         lines.append(f"""
-Pattern: {p.get('distractor_pattern_name')}
-- Wrong answer logic: {p.get('wrong_answer_logic')}
-- Misconception targeted: {p.get('misconception_targeted')}
-- How to generate: {p.get('how_to_generate_distractor')}""")
+Use this distractor pattern:
+Pattern name: {p.get('distractor_pattern_name')}
+Wrong-answer logic: {p.get('wrong_answer_logic')}
+Misconception: {p.get('misconception_targeted')}
+How to generate: {p.get('how_to_generate_distractor')}
+Coaching strategy: {p.get('wrong_answer_coaching_strategy', '')}""")
 
     return "\n".join(lines)
 
@@ -216,34 +206,34 @@ def build_generation_prompt(
     part_letter, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
     created_at = now_iso()
     blueprint_code = blueprint.get('blueprint_code', '')
-    blueprint_rules = get_blueprint_specific_rules(blueprint_code)
-    distractor_section = format_distractor_patterns(distractor_patterns or [])
+    layer_c = format_layer_c_distractor_patterns(distractor_patterns or [])
+    layer_d = get_layer_d_safety_rules(blueprint_code)
 
     return f"""
 You are generating one original Waterloo Gauss Grade 7 multiple-choice math question.
-Return JSON only. No Markdown. No explanation outside JSON.
 
-WATERLOO GAUSS STYLE (MANDATORY):
-- Write in formal, concise contest style. Every word must serve the mathematical setup.
-- Use direct setup structure: "If...", "Suppose...", "A list of...", or "In the diagram,".
-- Follow with specific question: "What is...", "How many...", "Which of the following...".
-- Part A: 1 sentence. Part B: 2 sentences. Part C: 3-4 concise sentences.
-- Neutral tone. No instructional fluff like "Let's explore," "Help Dan," "Remember that...".
-- Use Grade 7 technical terms (integer, prime, mean, sum, product) without explanation.
-- Order all numerical answer choices from LEAST to GREATEST.
-- If a visual is required, start the question with "In the diagram," or "Based on the graph shown,".
+LAYER A — GLOBAL STYLE RULES:
+Write in Waterloo Gauss Grade 7 style:
+- Concise, neutral, and contest-like
+- Clear for Grade 7 students
+- No lesson-like wording
+- No unnecessary story details
+- No hints embedded in the question text
+- No explanation of the method in the question text
+- Answer choices should be clean and similar in format
+- Order numerical answer choices from least to greatest
 
-DISTRACTOR RULES (MANDATORY):
-- Each wrong answer must represent a PLAUSIBLE student error (not arbitrary).
-- The correct answer MUST have distractor_rationale = null (not an explanation of why it's correct).
-- Wrong answer rationales explain the mistake that leads to choosing that answer.
-{distractor_section}
-SOLUTION RULES (MANDATORY):
-- The solution steps must be mathematically correct.
+LAYER B — SCHEMA RULES:
+- Return valid JSON only. No Markdown. No explanation outside JSON.
+- Use A–E answer choices.
+- Exactly one correct_answer.
+- The correct answer must have distractor_rationale = null.
+- Each wrong answer must have a specific misconception-based rationale.
 - The solution must agree with correct_answer.
-- Do NOT include self-doubt language like "but wait" or "let me check again".
-{blueprint_rules}
-Blueprint:
+- No self-correction wording such as "but wait" or "this contradicts."
+{layer_c}
+{layer_d}
+BLUEPRINT CONTEXT:
 - blueprint_code: {blueprint_code}
 - blueprint_name: {blueprint.get('blueprint_name')}
 - program_name: Waterloo Gauss
@@ -258,10 +248,10 @@ Blueprint:
 - common_misconceptions: {blueprint.get('common_misconceptions')}
 - coaching_entry: {blueprint.get('coaching_entry')}
 - difficulty_drivers: {blueprint.get('difficulty_drivers')}
-- distractor_strategy: {blueprint.get('distractor_strategy')}
 - visual_required: {blueprint.get('visual_required')}
 - visual_type: {blueprint.get('visual_type')}
 
+JSON SCHEMA:
 Return JSON with these keys:
 - id: use format waterloo_gauss_{blueprint_code}_{difficulty_id}_{index:04d}
 - program: "waterloo_gauss"
@@ -270,22 +260,22 @@ Return JSON with these keys:
 - difficulty: "{difficulty_id}"
 - archetype: "{blueprint.get('archetype')}"
 - question_text: the question (Waterloo style, concise)
-- options: {{"A": "...", "B": "...", "C": "...", "D": "...", "E": "..."}} (ordered least to greatest)
+- options: {{"A": "...", "B": "...", "C": "...", "D": "...", "E": "..."}}
 - correct_answer: one of A-E
 - reasoning_skills: array of skills
 - misconceptions: array of common mistakes
-- distractor_rationale: {{"A": "why wrong or null if correct", "B": "...", ...}} (null for correct answer!)
+- distractor_rationale: {{"A": "why wrong or null if correct", "B": "...", ...}}
 - solution: {{"steps": ["step1", "step2"], "key_insight": "main idea"}}
 - coaching_hints: ["hint1", "hint2", "hint3"]
-- visual: {{"required": {str(blueprint.get('visual_required', False)).lower()}, "type": "{blueprint.get('visual_type', 'none')}", "spec": {{...data for rendering...}}}}
+- visual: {{"required": {str(blueprint.get('visual_required', False)).lower()}, "type": "{blueprint.get('visual_type', 'none')}", "spec": {{...}}}}
 - metadata: {{"source": "ai_generated", "blueprint_code": "{blueprint_code}", "created_at": "{created_at}"}}
 
-For visual.spec based on visual_type:
-- bar_graph: {{"title": "...", "x_labels": ["A", "B", "C"], "values": [10, 20, 30], "y_axis_label": "..."}}
-- line_graph: {{"title": "...", "x_labels": ["A", "B", "C"], "values": [10, 20, 30], "y_axis_label": "..."}}
+VISUAL SPEC FORMATS:
+- bar_graph: {{"title": "...", "x_labels": [...], "values": [...], "y_axis_label": "..."}}
+- line_graph: {{"title": "...", "x_labels": [...], "values": [...], "y_axis_label": "..."}}
 - geometry_diagram: {{"description": "...", "shapes": [...], "labels": [...], "angles": [...]}}
 - coordinate_grid: {{"points": [{{"x": 1, "y": 2, "label": "A"}}], "x_range": [-5, 5], "y_range": [-5, 5]}}
-- table: {{"headers": ["Col1", "Col2"], "rows": [["a", "b"], ["c", "d"]]}}
+- table: {{"headers": [...], "rows": [[...], [...]]}}
 - fraction_area: {{"total_parts": 8, "shaded_parts": 3, "shape": "rectangle"}}
 """.strip()
 
