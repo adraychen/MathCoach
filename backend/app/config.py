@@ -17,8 +17,11 @@ class Settings(BaseSettings):
     # Database (PostgreSQL via Supabase Transaction Pooler)
     supabase_url: str
 
-    # Groq AI
-    groq_api_key: str
+    # Groq AI (legacy)
+    groq_api_key: str = ""
+
+    # OpenRouter AI
+    openrouter_api_key: str = ""
 
     # CORS - comma-separated string
     cors_origins: str = "http://localhost:5173,http://localhost:3000"

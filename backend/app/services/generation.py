@@ -296,8 +296,8 @@ VISUAL SPEC FORMATS:
 """.strip()
 
 
-def call_groq(prompt: str, model: str = DEFAULT_MODEL) -> dict[str, Any]:
-    """Call Groq API to generate a question."""
+def call_llm(prompt: str, model: str = DEFAULT_MODEL) -> dict[str, Any]:
+    """Call OpenRouter API to generate a question."""
     settings = get_settings()
 
     payload = {
@@ -312,9 +312,9 @@ def call_groq(prompt: str, model: str = DEFAULT_MODEL) -> dict[str, Any]:
     }
 
     response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
+        "https://openrouter.ai/api/v1/chat/completions",
         headers={
-            "Authorization": f"Bearer {settings.groq_api_key}",
+            "Authorization": f"Bearer {settings.openrouter_api_key}",
             "Content-Type": "application/json"
         },
         json=payload,
@@ -322,7 +322,7 @@ def call_groq(prompt: str, model: str = DEFAULT_MODEL) -> dict[str, Any]:
     )
 
     if response.status_code >= 400:
-        raise RuntimeError(f"Groq API error {response.status_code}: {response.text[:500]}")
+        raise RuntimeError(f"OpenRouter API error {response.status_code}: {response.text[:500]}")
 
     content = response.json()["choices"][0]["message"]["content"]
 
@@ -404,7 +404,7 @@ def generate_question(
     distractor_patterns = get_distractor_patterns(db, blueprint_code)
 
     prompt = build_generation_prompt(blueprint, index, distractor_patterns)
-    question = call_groq(prompt, model)
+    question = call_llm(prompt, model)
 
     # Override ID with unique timestamp-based ID
     _, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
