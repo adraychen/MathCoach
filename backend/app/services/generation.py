@@ -132,6 +132,23 @@ def get_blueprint(db: Session, blueprint_code: str) -> dict[str, Any] | None:
     return dict(row._mapping) if row else None
 
 
+def get_distractor_patterns(db: Session, blueprint_code: str) -> list[dict[str, Any]]:
+    """Get distractor patterns for a blueprint."""
+    result = db.execute(
+        text("""
+            SELECT
+                distractor_pattern_name,
+                wrong_answer_logic,
+                misconception_targeted,
+                how_to_generate_distractor
+            FROM mathcoach_blueprint_distractor_patterns
+            WHERE blueprint_code = :code AND is_active = true
+        """),
+        {"code": blueprint_code}
+    )
+    return [dict(row._mapping) for row in result]
+
+
 def get_blueprint_specific_rules(blueprint_code: str) -> str:
     """Return blueprint-specific generation rules."""
     rules = {
@@ -175,11 +192,32 @@ VISUAL DATA RULES:
     return rules.get(blueprint_code, "")
 
 
-def build_generation_prompt(blueprint: dict[str, Any], index: int) -> str:
+def format_distractor_patterns(patterns: list[dict[str, Any]]) -> str:
+    """Format distractor patterns for inclusion in the prompt."""
+    if not patterns:
+        return ""
+
+    lines = ["\nDISTRACTOR PATTERNS (use these to create plausible wrong answers):"]
+    for p in patterns:
+        lines.append(f"""
+Pattern: {p.get('distractor_pattern_name')}
+- Wrong answer logic: {p.get('wrong_answer_logic')}
+- Misconception targeted: {p.get('misconception_targeted')}
+- How to generate: {p.get('how_to_generate_distractor')}""")
+
+    return "\n".join(lines)
+
+
+def build_generation_prompt(
+    blueprint: dict[str, Any],
+    index: int,
+    distractor_patterns: list[dict[str, Any]] | None = None,
+) -> str:
     part_letter, difficulty_id = normalize_part(blueprint.get("difficulty_level"))
     created_at = now_iso()
     blueprint_code = blueprint.get('blueprint_code', '')
     blueprint_rules = get_blueprint_specific_rules(blueprint_code)
+    distractor_section = format_distractor_patterns(distractor_patterns or [])
 
     return f"""
 You are generating one original Waterloo Gauss Grade 7 multiple-choice math question.
@@ -199,7 +237,7 @@ DISTRACTOR RULES (MANDATORY):
 - Each wrong answer must represent a PLAUSIBLE student error (not arbitrary).
 - The correct answer MUST have distractor_rationale = null (not an explanation of why it's correct).
 - Wrong answer rationales explain the mistake that leads to choosing that answer.
-
+{distractor_section}
 SOLUTION RULES (MANDATORY):
 - The solution steps must be mathematically correct.
 - The solution must agree with correct_answer.
@@ -356,7 +394,10 @@ def generate_question(
     if not blueprint:
         raise ValueError(f"Blueprint not found: {blueprint_code}")
 
-    prompt = build_generation_prompt(blueprint, index)
+    # Fetch distractor patterns for this blueprint
+    distractor_patterns = get_distractor_patterns(db, blueprint_code)
+
+    prompt = build_generation_prompt(blueprint, index, distractor_patterns)
     question = call_groq(prompt, model)
 
     # Override ID with unique timestamp-based ID
