@@ -1,244 +1,388 @@
-interface Point {
-  x: number
-  y: number
-  label?: string
-}
-
-interface Shape {
-  type: 'triangle' | 'line' | 'polygon'
-  points: Point[]
-  properties?: Record<string, string>
-}
-
-interface AngleMarker {
-  vertex?: string
-  points?: string[]
-  label?: string
-  measure?: number | string
-}
-
 interface GeometryDiagramProps {
   spec: {
+    diagram_type?: string
     description?: string
-    shapes?: Shape[] | string[]
-    labels?: string[] | Record<string, string>
-    angles?: AngleMarker[]
+    // Template parameters
+    angle_a?: number | string
+    angle_b?: number | string
+    angle_c?: number | string
+    exterior_angle?: number | string
+    vertex_angle?: number | string
+    base_angle?: number | string
+    angle_1?: number | string
+    angle_2?: number | string
+    angle_abd?: number | string
+    angle_dbc?: number | string
+    angle_adb?: number | string
+    target_angle?: string
+    // Legacy coordinate-based
+    shapes?: unknown[]
+    labels?: unknown
+    angles?: unknown[]
   }
 }
 
 export function GeometryDiagram({ spec }: GeometryDiagramProps) {
-  const { description, shapes, angles } = spec
+  const { diagram_type, description } = spec
 
-  // Check if we have coordinate-based shapes
-  const hasCoordinateShapes = shapes && shapes.length > 0 && typeof shapes[0] === 'object'
-
-  if (!hasCoordinateShapes) {
-    // Fallback: show description for non-coordinate specs
-    return (
-      <div className="p-4 bg-slate-50 rounded border text-center">
-        <div className="text-sm text-slate-600 mb-2">Geometry Diagram</div>
-        <div className="text-sm">{description || 'Diagram not available'}</div>
-        {angles && angles.length > 0 && (
-          <div className="mt-2 text-xs text-slate-500">
-            Angles: {angles.map((a, i) => (
-              <span key={i} className="mr-2">
-                {a.vertex || a.points?.join('')}: {a.measure}°
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // Parse coordinate-based shapes
-  const coordinateShapes = shapes as Shape[]
-
-  // Collect all points from shapes
-  const allPoints: Point[] = []
-  coordinateShapes.forEach(shape => {
-    shape.points?.forEach(p => {
-      if (p.x !== undefined && p.y !== undefined) {
-        allPoints.push(p)
-      }
-    })
-  })
-
-  if (allPoints.length === 0) {
-    return (
-      <div className="p-4 bg-slate-50 rounded border text-center">
-        <div className="text-sm text-slate-600">{description || 'Diagram not available'}</div>
-      </div>
-    )
-  }
-
-  // Calculate bounds
-  const xs = allPoints.map(p => p.x)
-  const ys = allPoints.map(p => p.y)
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
-
-  // SVG dimensions and padding
   const width = 300
-  const height = 250
-  const padding = 40
+  const height = 220
 
-  // Scale to fit
-  const rangeX = maxX - minX || 1
-  const rangeY = maxY - minY || 1
-  const scale = Math.min(
-    (width - 2 * padding) / rangeX,
-    (height - 2 * padding) / rangeY
-  )
+  // Render based on diagram_type
+  switch (diagram_type) {
+    case 'triangle_angles':
+      return renderTriangleAngles(spec, width, height)
 
-  // Transform function: flip Y axis (SVG has Y going down)
-  const transformX = (x: number) => padding + (x - minX) * scale
-  const transformY = (y: number) => height - padding - (y - minY) * scale
+    case 'triangle_exterior':
+      return renderTriangleExterior(spec, width, height)
 
-  // Build a map of labels to points for angle rendering
-  const labelToPoint: Record<string, Point> = {}
-  allPoints.forEach(p => {
-    if (p.label) {
-      labelToPoint[p.label] = p
-    }
-  })
+    case 'isosceles_triangle':
+      return renderIsoscelesTriangle(spec, width, height)
 
-  // Render angle arc
-  const renderAngleArc = (angle: AngleMarker, index: number) => {
-    // Try to get angle vertex from various formats
-    let vertexLabel = angle.vertex
-    let measure = angle.measure
+    case 'intersecting_lines':
+      return renderIntersectingLines(spec, width, height)
 
-    if (angle.points && angle.points.length >= 3) {
-      // Format: ["B", "A", "C"] means angle at A
-      vertexLabel = angle.points[1]
-    }
+    case 'right_triangle_with_point':
+      return renderRightTriangleWithPoint(spec, width, height)
 
-    if (!vertexLabel || !labelToPoint[vertexLabel]) return null
-
-    const vertex = labelToPoint[vertexLabel]
-    const vx = transformX(vertex.x)
-    const vy = transformY(vertex.y)
-
-    // Simple angle arc indicator
-    const arcRadius = 20
-
-    return (
-      <g key={`angle-${index}`}>
-        <circle
-          cx={vx}
-          cy={vy}
-          r={arcRadius}
-          fill="none"
-          stroke="#3b82f6"
-          strokeWidth={1.5}
-          strokeDasharray="3,2"
-          opacity={0.6}
-        />
-        {measure && (
-          <text
-            x={vx}
-            y={vy - arcRadius - 5}
-            textAnchor="middle"
-            className="text-xs fill-blue-600 font-medium"
-          >
-            {typeof measure === 'number' ? `${measure}°` : measure}
-          </text>
-        )}
-      </g>
-    )
+    default:
+      // Fallback for description-based or unknown types
+      return (
+        <div className="p-4 bg-slate-50 rounded border text-center max-w-[300px]">
+          <div className="text-sm text-slate-600 mb-2">Geometry Diagram</div>
+          <div className="text-sm">{description || 'Diagram not available'}</div>
+          {spec.angles && Array.isArray(spec.angles) && spec.angles.length > 0 && (
+            <div className="mt-2 text-xs text-slate-500">
+              {spec.angles.map((a: any, i: number) => (
+                <span key={i} className="mr-2">
+                  {a.vertex || a.label || ''}: {a.measure || a.value || ''}°
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )
   }
+}
+
+// Triangle with labeled interior angles
+function renderTriangleAngles(spec: GeometryDiagramProps['spec'], width: number, height: number) {
+  const { angle_a, angle_b, angle_c, target_angle } = spec
+
+  // Triangle vertices
+  const A = { x: 150, y: 30 }  // top
+  const B = { x: 50, y: 180 }  // bottom left
+  const C = { x: 250, y: 180 } // bottom right
 
   return (
     <div className="flex flex-col items-center">
       <svg width={width} height={height} className="bg-white rounded border">
-        {/* Render shapes */}
-        {coordinateShapes.map((shape, shapeIndex) => {
-          const points = shape.points || []
+        {/* Triangle */}
+        <polygon
+          points={`${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y}`}
+          fill="#f0f9ff"
+          stroke="#1e40af"
+          strokeWidth={2}
+        />
 
-          if (shape.type === 'triangle' || shape.type === 'polygon' || points.length >= 3) {
-            // Render as closed polygon
-            const pathPoints = points
-              .map(p => `${transformX(p.x)},${transformY(p.y)}`)
-              .join(' ')
+        {/* Angle arcs */}
+        <path d={`M ${A.x + 15} ${A.y + 20} A 20 20 0 0 1 ${A.x - 15} ${A.y + 20}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+        <path d={`M ${B.x + 25} ${B.y - 5} A 20 20 0 0 1 ${B.x + 10} ${B.y - 20}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+        <path d={`M ${C.x - 25} ${C.y - 5} A 20 20 0 0 0 ${C.x - 10} ${C.y - 20}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
 
-            return (
-              <g key={`shape-${shapeIndex}`}>
-                <polygon
-                  points={pathPoints}
-                  fill="#f0f9ff"
-                  stroke="#1e40af"
-                  strokeWidth={2}
-                />
-              </g>
-            )
-          } else if (shape.type === 'line' || points.length === 2) {
-            // Render as line
-            const [p1, p2] = points
-            return (
-              <line
-                key={`shape-${shapeIndex}`}
-                x1={transformX(p1.x)}
-                y1={transformY(p1.y)}
-                x2={transformX(p2.x)}
-                y2={transformY(p2.y)}
-                stroke="#1e40af"
-                strokeWidth={2}
-              />
-            )
-          }
+        {/* Vertex labels */}
+        <text x={A.x} y={A.y - 8} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">A</text>
+        <text x={B.x - 12} y={B.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">B</text>
+        <text x={C.x + 12} y={C.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">C</text>
 
-          return null
-        })}
-
-        {/* Render angle arcs */}
-        {angles?.map((angle, i) => renderAngleArc(angle, i))}
-
-        {/* Render point labels */}
-        {allPoints.map((point, i) => {
-          if (!point.label) return null
-
-          const x = transformX(point.x)
-          const y = transformY(point.y)
-
-          // Offset label based on position relative to center
-          const centerX = (transformX(minX) + transformX(maxX)) / 2
-          const centerY = (transformY(minY) + transformY(maxY)) / 2
-          const offsetX = x < centerX ? -12 : x > centerX ? 12 : 0
-          const offsetY = y < centerY ? -12 : y > centerY ? 12 : -12
-
-          return (
-            <g key={`point-${i}`}>
-              {/* Point dot */}
-              <circle
-                cx={x}
-                cy={y}
-                r={4}
-                fill="#1e40af"
-              />
-              {/* Label */}
-              <text
-                x={x + offsetX}
-                y={y + offsetY}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="text-sm fill-slate-800 font-semibold"
-              >
-                {point.label}
-              </text>
-            </g>
-          )
-        })}
+        {/* Angle labels */}
+        {angle_a && (
+          <text x={A.x} y={A.y + 40} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'A' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'A' ? '?' : `${angle_a}°`}
+          </text>
+        )}
+        {angle_b && (
+          <text x={B.x + 35} y={B.y - 25} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'B' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'B' ? '?' : `${angle_b}°`}
+          </text>
+        )}
+        {angle_c && (
+          <text x={C.x - 35} y={C.y - 25} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'C' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'C' ? '?' : `${angle_c}°`}
+          </text>
+        )}
       </svg>
+    </div>
+  )
+}
 
-      {/* Description below diagram */}
-      {description && (
-        <div className="text-xs text-slate-500 mt-2 max-w-[300px] text-center">
-          {description}
-        </div>
-      )}
+// Triangle with exterior angle at vertex C
+function renderTriangleExterior(spec: GeometryDiagramProps['spec'], width: number, height: number) {
+  const { angle_a, angle_b, angle_c, exterior_angle, target_angle } = spec
+
+  // Triangle vertices
+  const A = { x: 150, y: 30 }  // top
+  const B = { x: 50, y: 160 }  // bottom left
+  const C = { x: 200, y: 160 } // bottom right
+  const D = { x: 280, y: 160 } // extension point
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={width} height={height} className="bg-white rounded border">
+        {/* Triangle */}
+        <polygon
+          points={`${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y}`}
+          fill="#f0f9ff"
+          stroke="#1e40af"
+          strokeWidth={2}
+        />
+
+        {/* Extension line BC to D */}
+        <line x1={C.x} y1={C.y} x2={D.x} y2={D.y} stroke="#1e40af" strokeWidth={2} />
+
+        {/* Angle arcs */}
+        {angle_a && (
+          <path d={`M ${A.x + 12} ${A.y + 18} A 18 18 0 0 1 ${A.x - 12} ${A.y + 18}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+        )}
+        {angle_b && (
+          <path d={`M ${B.x + 22} ${B.y - 5} A 18 18 0 0 1 ${B.x + 8} ${B.y - 18}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+        )}
+        {/* Interior angle at C */}
+        {angle_c && (
+          <path d={`M ${C.x - 22} ${C.y - 5} A 18 18 0 0 0 ${C.x - 8} ${C.y - 18}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+        )}
+        {/* Exterior angle ACD */}
+        {(exterior_angle || target_angle === 'ACD') && (
+          <path d={`M ${C.x + 8} ${C.y - 18} A 22 22 0 0 1 ${C.x + 22} ${C.y - 5}`} fill="none" stroke="#ef4444" strokeWidth={2} />
+        )}
+
+        {/* Vertex labels */}
+        <text x={A.x} y={A.y - 8} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">A</text>
+        <text x={B.x - 12} y={B.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">B</text>
+        <text x={C.x} y={C.y + 18} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">C</text>
+        <text x={D.x + 8} y={D.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">D</text>
+
+        {/* Angle labels */}
+        {angle_a && (
+          <text x={A.x} y={A.y + 38} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'A' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'A' ? '?' : `${angle_a}°`}
+          </text>
+        )}
+        {angle_b && (
+          <text x={B.x + 32} y={B.y - 22} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'B' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'B' ? '?' : `${angle_b}°`}
+          </text>
+        )}
+        {angle_c && (
+          <text x={C.x - 32} y={C.y - 22} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'ACB' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'ACB' ? '?' : `${angle_c}°`}
+          </text>
+        )}
+        {(exterior_angle || target_angle === 'ACD') && (
+          <text x={C.x + 38} y={C.y - 22} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'ACD' ? 'fill-red-600' : 'fill-orange-600'}`}>
+            {target_angle === 'ACD' ? '?' : `${exterior_angle}°`}
+          </text>
+        )}
+      </svg>
+    </div>
+  )
+}
+
+// Isosceles triangle with equal sides marked
+function renderIsoscelesTriangle(spec: GeometryDiagramProps['spec'], width: number, height: number) {
+  const { vertex_angle, base_angle, exterior_angle, target_angle } = spec
+
+  // Isosceles triangle vertices (symmetric)
+  const A = { x: 150, y: 30 }  // apex
+  const B = { x: 60, y: 170 }  // bottom left
+  const C = { x: 240, y: 170 } // bottom right
+  const D = { x: 290, y: 170 } // extension if needed
+
+  const hasExterior = exterior_angle || target_angle === 'ACD'
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={width} height={height} className="bg-white rounded border">
+        {/* Triangle */}
+        <polygon
+          points={`${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y}`}
+          fill="#f0f9ff"
+          stroke="#1e40af"
+          strokeWidth={2}
+        />
+
+        {/* Equal side marks on AB */}
+        <line x1={100} y1={95} x2={108} y2={105} stroke="#1e40af" strokeWidth={2} />
+        {/* Equal side marks on AC */}
+        <line x1={192} y1={105} x2={200} y2={95} stroke="#1e40af" strokeWidth={2} />
+
+        {/* Extension line if needed */}
+        {hasExterior && (
+          <line x1={C.x} y1={C.y} x2={D.x} y2={D.y} stroke="#1e40af" strokeWidth={2} />
+        )}
+
+        {/* Vertex angle arc at A */}
+        {vertex_angle && (
+          <path d={`M ${A.x + 15} ${A.y + 22} A 22 22 0 0 1 ${A.x - 15} ${A.y + 22}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+        )}
+        {/* Base angle arcs */}
+        {base_angle && (
+          <>
+            <path d={`M ${B.x + 25} ${B.y - 5} A 20 20 0 0 1 ${B.x + 10} ${B.y - 20}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+            <path d={`M ${C.x - 25} ${C.y - 5} A 20 20 0 0 0 ${C.x - 10} ${C.y - 20}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+          </>
+        )}
+        {/* Exterior angle */}
+        {hasExterior && (
+          <path d={`M ${C.x + 10} ${C.y - 20} A 25 25 0 0 1 ${C.x + 25} ${C.y - 5}`} fill="none" stroke="#ef4444" strokeWidth={2} />
+        )}
+
+        {/* Vertex labels */}
+        <text x={A.x} y={A.y - 8} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">A</text>
+        <text x={B.x - 12} y={B.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">B</text>
+        <text x={C.x} y={C.y + 18} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">C</text>
+        {hasExterior && (
+          <text x={D.x + 8} y={D.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">D</text>
+        )}
+
+        {/* Angle labels */}
+        {vertex_angle && (
+          <text x={A.x} y={A.y + 45} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'A' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'A' ? '?' : `${vertex_angle}°`}
+          </text>
+        )}
+        {base_angle && (
+          <>
+            <text x={B.x + 35} y={B.y - 25} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'B' ? 'fill-red-600' : 'fill-blue-600'}`}>
+              {target_angle === 'B' ? '?' : `${base_angle}°`}
+            </text>
+            <text x={C.x - 35} y={C.y - 25} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'C' || target_angle === 'ACB' ? 'fill-red-600' : 'fill-blue-600'}`}>
+              {target_angle === 'C' || target_angle === 'ACB' ? '?' : `${base_angle}°`}
+            </text>
+          </>
+        )}
+        {hasExterior && (
+          <text x={C.x + 42} y={C.y - 25} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'ACD' ? 'fill-red-600' : 'fill-orange-600'}`}>
+            {target_angle === 'ACD' ? '?' : `${exterior_angle}°`}
+          </text>
+        )}
+      </svg>
+    </div>
+  )
+}
+
+// Two intersecting lines with angles
+function renderIntersectingLines(spec: GeometryDiagramProps['spec'], width: number, height: number) {
+  const { angle_1, angle_2, target_angle } = spec
+
+  const center = { x: 150, y: 110 }
+  const len = 80
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={width} height={height} className="bg-white rounded border">
+        {/* Horizontal line */}
+        <line x1={center.x - len} y1={center.y} x2={center.x + len} y2={center.y} stroke="#1e40af" strokeWidth={2} />
+        {/* Diagonal line */}
+        <line x1={center.x - len * 0.7} y1={center.y + len * 0.7} x2={center.x + len * 0.7} y2={center.y - len * 0.7} stroke="#1e40af" strokeWidth={2} />
+
+        {/* Right angle marker if 90 degrees */}
+        {(angle_1 === 90 || angle_1 === '90') && (
+          <rect x={center.x} y={center.y - 12} width={12} height={12} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+        )}
+
+        {/* Center point */}
+        <circle cx={center.x} cy={center.y} r={3} fill="#1e40af" />
+        <text x={center.x - 12} y={center.y + 18} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">O</text>
+
+        {/* Angle labels */}
+        {angle_1 && (
+          <text x={center.x + 25} y={center.y - 20} textAnchor="middle" className={`text-xs font-medium ${target_angle === '1' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === '1' ? '?' : `${angle_1}°`}
+          </text>
+        )}
+        {angle_2 && (
+          <text x={center.x - 25} y={center.y - 20} textAnchor="middle" className={`text-xs font-medium ${target_angle === '2' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === '2' ? '?' : `${angle_2}°`}
+          </text>
+        )}
+      </svg>
+    </div>
+  )
+}
+
+// Right triangle with a point D on one side (e.g., on BC)
+function renderRightTriangleWithPoint(spec: GeometryDiagramProps['spec'], width: number, height: number) {
+  const { angle_abd, angle_dbc, angle_a, angle_adb, target_angle } = spec as any
+
+  // Right triangle ABC with right angle at B
+  const A = { x: 150, y: 30 }   // top
+  const B = { x: 50, y: 180 }   // bottom left (right angle)
+  const C = { x: 250, y: 180 }  // bottom right
+  // D is on BC
+  const D = { x: 120, y: 180 }  // point between B and C
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={width} height={height} className="bg-white rounded border">
+        {/* Triangle ABC */}
+        <polygon
+          points={`${A.x},${A.y} ${B.x},${B.y} ${C.x},${C.y}`}
+          fill="#f0f9ff"
+          stroke="#1e40af"
+          strokeWidth={2}
+        />
+
+        {/* Line AD (connecting A to D) */}
+        <line x1={A.x} y1={A.y} x2={D.x} y2={D.y} stroke="#1e40af" strokeWidth={2} />
+
+        {/* Right angle marker at B */}
+        <rect x={B.x} y={B.y - 15} width={15} height={15} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+
+        {/* Angle arc for ABD */}
+        {angle_abd && (
+          <path d={`M ${B.x + 25} ${B.y - 5} A 22 22 0 0 1 ${B.x + 15} ${B.y - 20}`} fill="none" stroke="#3b82f6" strokeWidth={1.5} />
+        )}
+
+        {/* Angle arc for DBC */}
+        {angle_dbc && (
+          <path d={`M ${B.x + 35} ${B.y - 5} A 30 30 0 0 1 ${B.x + 30} ${B.y - 10}`} fill="none" stroke="#22c55e" strokeWidth={1.5} />
+        )}
+
+        {/* Vertex labels */}
+        <text x={A.x} y={A.y - 10} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">A</text>
+        <text x={B.x - 12} y={B.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">B</text>
+        <text x={C.x + 12} y={C.y + 5} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">C</text>
+        <text x={D.x} y={D.y + 18} textAnchor="middle" className="text-sm fill-slate-800 font-semibold">D</text>
+
+        {/* Point markers */}
+        <circle cx={D.x} cy={D.y} r={3} fill="#1e40af" />
+
+        {/* Angle labels */}
+        {angle_abd && (
+          <text x={B.x + 40} y={B.y - 25} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'ABD' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'ABD' ? '?' : `${angle_abd}°`}
+          </text>
+        )}
+        {angle_dbc && (
+          <text x={B.x + 55} y={B.y - 10} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'DBC' ? 'fill-red-600' : 'fill-green-600'}`}>
+            {target_angle === 'DBC' ? '?' : `${angle_dbc}°`}
+          </text>
+        )}
+        {angle_a && (
+          <text x={A.x} y={A.y + 35} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'A' || target_angle === 'BAC' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'A' || target_angle === 'BAC' ? '?' : `${angle_a}°`}
+          </text>
+        )}
+        {angle_adb && (
+          <text x={D.x - 20} y={D.y - 25} textAnchor="middle" className={`text-xs font-medium ${target_angle === 'ADB' ? 'fill-red-600' : 'fill-blue-600'}`}>
+            {target_angle === 'ADB' ? '?' : `${angle_adb}°`}
+          </text>
+        )}
+
+        {/* 90° label at B */}
+        <text x={B.x + 22} y={B.y - 20} textAnchor="middle" className="text-xs fill-blue-600 font-medium">90°</text>
+      </svg>
     </div>
   )
 }

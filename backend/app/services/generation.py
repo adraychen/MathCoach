@@ -276,7 +276,13 @@ Return JSON with these keys:
 VISUAL SPEC FORMATS:
 - bar_graph: {{"title": "...", "x_labels": [...], "values": [...], "y_axis_label": "..."}}
 - line_graph: {{"title": "...", "x_labels": [...], "values": [...], "y_axis_label": "..."}}
-- geometry_diagram: {{"description": "...", "shapes": [...], "labels": [...], "angles": [...]}}
+- geometry_diagram: Use one of these templates:
+  * triangle_angles: {{"diagram_type": "triangle_angles", "angle_a": 60, "angle_b": 50, "angle_c": 70, "target_angle": "C"}}
+  * triangle_exterior: {{"diagram_type": "triangle_exterior", "angle_a": 60, "angle_b": 50, "angle_c": 70, "exterior_angle": 110, "target_angle": "ACD"}}
+  * isosceles_triangle: {{"diagram_type": "isosceles_triangle", "vertex_angle": 40, "base_angle": 70, "target_angle": "ACD"}}
+  * intersecting_lines: {{"diagram_type": "intersecting_lines", "angle_1": 35, "angle_2": 55, "target_angle": "2"}}
+  * right_triangle_with_point: {{"diagram_type": "right_triangle_with_point", "angle_abd": 35, "angle_dbc": 55, "target_angle": "DBC"}}
+  Use target_angle to indicate which angle is the unknown (shown as "?")
 - coordinate_grid: {{"points": [{{"x": 1, "y": 2, "label": "A"}}], "x_range": [-5, 5], "y_range": [-5, 5]}}
 - table: {{"headers": [...], "rows": [[...], [...]]}}
 - fraction_area: {{"total_parts": 8, "shaded_parts": 3, "shape": "rectangle"}}
