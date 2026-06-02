@@ -9,7 +9,6 @@ export function AdminPortal() {
   const [teacherForm, setTeacherForm] = useState({
     displayName: '',
     email: '',
-    password: '',
   })
   const [creating, setCreating] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
@@ -47,7 +46,6 @@ export function AdminPortal() {
         },
         body: JSON.stringify({
           email: teacherForm.email,
-          password: teacherForm.password,
           display_name: teacherForm.displayName,
         }),
       })
@@ -60,8 +58,8 @@ export function AdminPortal() {
         return
       }
 
-      setSuccessMessage('Teacher account created.')
-      setTeacherForm({ displayName: '', email: '', password: '' })
+      setSuccessMessage('Teacher account created. An invitation email has been sent.')
+      setTeacherForm({ displayName: '', email: '' })
     } catch (err) {
       setErrorMessage('Network error. Please try again.')
     } finally {
@@ -71,7 +69,7 @@ export function AdminPortal() {
 
   const closeCreateTeacher = () => {
     setShowCreateTeacher(false)
-    setTeacherForm({ displayName: '', email: '', password: '' })
+    setTeacherForm({ displayName: '', email: '' })
     setSuccessMessage('')
     setErrorMessage('')
   }
@@ -165,21 +163,6 @@ export function AdminPortal() {
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="teacher@example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Temporary Password
-                </label>
-                <input
-                  type="password"
-                  value={teacherForm.password}
-                  onChange={(e) => setTeacherForm({ ...teacherForm, password: e.target.value })}
-                  required
-                  minLength={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Minimum 6 characters"
                 />
               </div>
 

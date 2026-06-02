@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
  * Netlify Function: Create Teacher Account
  *
  * Allows an admin to create a teacher account from the Admin Portal.
+ * Sends an invitation email to the teacher to set their own password.
  *
  * POST /.netlify/functions/create-teacher-account
  *
@@ -13,7 +14,6 @@ import { createClient } from '@supabase/supabase-js';
  * Body:
  *   {
  *     "email": "teacher@example.com",
- *     "password": "TempPass123!",
  *     "display_name": "Jane Smith"
  *   }
  */
@@ -125,7 +125,7 @@ export async function handler(event) {
     };
   }
 
-  const { email, password, display_name } = body;
+  const { email, display_name } = body;
 
   // Validate required fields
   if (!email || typeof email !== 'string' || !email.trim()) {
@@ -133,14 +133,6 @@ export async function handler(event) {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'Email is required' }),
-    };
-  }
-
-  if (!password || typeof password !== 'string' || password.length < 6) {
-    return {
-      statusCode: 400,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Password is required and must be at least 6 characters' }),
     };
   }
 
@@ -170,16 +162,16 @@ export async function handler(event) {
     };
   }
 
-  // Create auth user
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-    email: trimmedEmail,
-    password,
-    email_confirm: true,
-    user_metadata: {
-      role: 'teacher',
-      display_name: trimmedDisplayName,
-    },
-  });
+  // Invite user by email - they will receive an email to set their password
+  const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(
+    trimmedEmail,
+    {
+      data: {
+        role: 'teacher',
+        display_name: trimmedDisplayName,
+      },
+    }
+  );
 
   if (authError) {
     console.error('Auth creation error:', authError.message);
@@ -213,7 +205,6 @@ export async function handler(event) {
       login_type: 'email',
       active: true,
       approval_status: 'approved',
-      must_change_password: true,
       created_by: requestingUserId,
     });
 
