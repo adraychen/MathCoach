@@ -5,6 +5,7 @@ import { AnswerCard } from './AnswerCard'
 import { CoachingPanel } from './CoachingPanel'
 import { ProgressIndicator } from './ProgressIndicator'
 import { SummaryPanel } from './SummaryPanel'
+import { UserHeader } from './UserHeader'
 import type { QuestionWithSolution, QuestionState, AnswerChoice, Solution, PracticeProgress } from '../types/database'
 
 interface PracticeSetRow {
@@ -384,21 +385,28 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   }
 
   return (
-    <div className="h-screen flex bg-gray-100 p-3 gap-3">
-      {/* Left Main Area */}
-      <div className="flex-1 flex flex-col gap-2 min-w-0">
-        {/* Progress Indicator */}
-        <div className="flex-shrink-0 relative">
-          <ProgressIndicator
-            progress={progress}
-            onReviewFlagged={handleReviewFlagged}
-          />
-          {noFlaggedMessage && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-3 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-10">
-              No flagged questions yet.
-            </div>
-          )}
-        </div>
+    <div className="h-screen flex flex-col bg-gray-100 p-3 gap-2">
+      {/* Header */}
+      <div className="flex-shrink-0">
+        <UserHeader />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex gap-3 min-h-0">
+        {/* Left Main Area */}
+        <div className="flex-1 flex flex-col gap-2 min-w-0">
+          {/* Progress Indicator */}
+          <div className="flex-shrink-0 relative">
+            <ProgressIndicator
+              progress={progress}
+              onReviewFlagged={handleReviewFlagged}
+            />
+            {noFlaggedMessage && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-3 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-10">
+                No flagged questions yet.
+              </div>
+            )}
+          </div>
 
         {/* PDF Viewer - Top */}
         <div className="flex-1 min-h-0">
@@ -426,14 +434,15 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
         </div>
       </div>
 
-      {/* Right Side Panel - Coaching */}
-      <div className="w-80 flex-shrink-0">
-        <div className="sticky top-4">
-          <CoachingPanel
-            solution={currentQuestion.solution}
-            isOpen={coachingOpen}
-            onToggle={toggleCoaching}
-          />
+        {/* Right Side Panel - Coaching */}
+        <div className="w-80 flex-shrink-0">
+          <div className="sticky top-4">
+            <CoachingPanel
+              solution={currentQuestion.solution}
+              isOpen={coachingOpen}
+              onToggle={toggleCoaching}
+            />
+          </div>
         </div>
       </div>
     </div>

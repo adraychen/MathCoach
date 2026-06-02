@@ -1,0 +1,12 @@
+{
+  "name": "gauss-scripts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "create-student": "node create_student_account.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "dotenv": "^16.4.7"
+  }
+}
