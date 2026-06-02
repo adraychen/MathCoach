@@ -1,12 +1,32 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
-import { PracticeScreen } from './components/PracticeScreen'
 import { LoginScreen } from './components/LoginScreen'
 import { ResetPasswordScreen } from './components/ResetPasswordScreen'
+import { AdminPortal } from './pages/AdminPortal'
+import { TeacherPortal } from './pages/TeacherPortal'
+import { StudentPracticePortal } from './pages/StudentPracticePortal'
 import { Loader2 } from 'lucide-react'
 
+function ErrorScreen({ message }: { message: string }) {
+  const { signOut } = useAuth()
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="text-center p-6 bg-white rounded-lg shadow-sm border border-gray-200 max-w-md">
+        <p className="text-red-600 font-medium mb-4">{message}</p>
+        <button
+          onClick={signOut}
+          className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function AppContent() {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, profileStatus, loading } = useAuth()
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -21,24 +41,42 @@ function AppContent() {
   }
 
   // Show login if not authenticated
-  if (!user || !profile) {
+  if (!user) {
     return <LoginScreen />
   }
 
-  // Show inactive message
-  if (!profile.active) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-center p-6 bg-white rounded-lg shadow-sm border border-gray-200">
-          <p className="text-red-600 font-medium">This account is inactive.</p>
-          <p className="text-gray-500 text-sm mt-2">Please contact your administrator.</p>
-        </div>
-      </div>
-    )
+  // Handle profile status
+  if (!profileStatus) {
+    return <ErrorScreen message="Your account profile is not set up. Please contact the administrator." />
   }
 
-  // Show practice screen for students
-  return <PracticeScreen setCode="G7gauss1" />
+  if (profileStatus.status === 'no_profile') {
+    return <ErrorScreen message="Your account profile is not set up. Please contact the administrator." />
+  }
+
+  if (profileStatus.status === 'inactive') {
+    return <ErrorScreen message="This account is inactive. Please contact the administrator." />
+  }
+
+  if (profileStatus.status === 'not_approved') {
+    return <ErrorScreen message="This account is not approved." />
+  }
+
+  // Route based on role
+  if (!profile) {
+    return <ErrorScreen message="Your account profile is not set up. Please contact the administrator." />
+  }
+
+  switch (profile.role) {
+    case 'admin':
+      return <AdminPortal />
+    case 'teacher':
+      return <TeacherPortal />
+    case 'student':
+      return <StudentPracticePortal />
+    default:
+      return <ErrorScreen message="Unknown account role. Please contact the administrator." />
+  }
 }
 
 function App() {

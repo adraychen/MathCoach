@@ -2,19 +2,27 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
-interface UserProfile {
+export interface UserProfile {
   id: string
   username: string | null
-  display_name: string | null
+  display_name: string
   role: 'student' | 'admin' | 'teacher'
   active: boolean
+  approval_status: 'approved' | 'disabled'
   must_change_password: boolean
 }
+
+export type ProfileStatus =
+  | { status: 'ok'; profile: UserProfile }
+  | { status: 'no_profile' }
+  | { status: 'inactive' }
+  | { status: 'not_approved' }
 
 interface AuthContextType {
   user: User | null
   session: Session | null
   profile: UserProfile | null
+  profileStatus: ProfileStatus | null
   loading: boolean
   error: string | null
   signIn: (identifier: string, password: string) => Promise<{ error: string | null }>
@@ -33,35 +41,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Load profile for a user - try profiles table first, fallback to student_profiles
-  const loadProfile = async (userId: string): Promise<UserProfile | null> => {
-    // Try profiles table first
+  // Load profile for a user
+  const loadProfile = async (userId: string): Promise<ProfileStatus> => {
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('id, username, display_name, role, active, must_change_password')
+      .select('id, username, display_name, role, active, approval_status, must_change_password')
       .eq('id', userId)
       .single()
 
-    if (!profileError && profileData) {
-      return profileData as UserProfile
+    if (profileError || !profileData) {
+      console.error('Error loading profile:', profileError)
+      return { status: 'no_profile' }
     }
 
-    // Fallback to student_profiles table
-    const { data: studentData, error: studentError } = await supabase
-      .from('student_profiles')
-      .select('id, username, display_name, role, active, must_change_password')
-      .eq('id', userId)
-      .single()
+    const userProfile = profileData as UserProfile
 
-    if (!studentError && studentData) {
-      return studentData as UserProfile
+    if (!userProfile.active) {
+      return { status: 'inactive' }
     }
 
-    console.error('Error loading profile:', profileError || studentError)
-    return null
+    if (userProfile.approval_status !== 'approved') {
+      return { status: 'not_approved' }
+    }
+
+    return { status: 'ok', profile: userProfile }
   }
 
   // Initialize auth state
@@ -73,8 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           setSession(session)
           setUser(session.user)
-          const userProfile = await loadProfile(session.user.id)
-          setProfile(userProfile)
+          const status = await loadProfile(session.user.id)
+          setProfileStatus(status)
+          if (status.status === 'ok') {
+            setProfile(status.profile)
+          }
         }
       } catch (err) {
         console.error('Auth init error:', err)
@@ -92,10 +102,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          const userProfile = await loadProfile(session.user.id)
-          setProfile(userProfile)
+          const status = await loadProfile(session.user.id)
+          setProfileStatus(status)
+          if (status.status === 'ok') {
+            setProfile(status.profile)
+          } else {
+            setProfile(null)
+          }
         } else {
           setProfile(null)
+          setProfileStatus(null)
         }
 
         setLoading(false)
@@ -113,10 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Determine if identifier is email or username
     let email: string
     if (isEmail(identifier)) {
-      // Use email directly
       email = identifier.toLowerCase()
     } else {
-      // Convert username to internal email
       email = `${identifier.toLowerCase()}${STUDENT_EMAIL_DOMAIN}`
     }
 
@@ -134,23 +148,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (data.user) {
-      const userProfile = await loadProfile(data.user.id)
+      const status = await loadProfile(data.user.id)
+      setProfileStatus(status)
 
-      if (!userProfile) {
-        await supabase.auth.signOut()
-        const errorMessage = 'Account not found. Please contact your administrator.'
-        setError(errorMessage)
-        return { error: errorMessage }
+      if (status.status === 'ok') {
+        setProfile(status.profile)
+      } else {
+        setProfile(null)
       }
-
-      if (!userProfile.active) {
-        await supabase.auth.signOut()
-        const errorMessage = 'This account is inactive.'
-        setError(errorMessage)
-        return { error: errorMessage }
-      }
-
-      setProfile(userProfile)
     }
 
     return { error: null }
@@ -161,11 +166,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setSession(null)
     setProfile(null)
+    setProfileStatus(null)
     setError(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, error, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, profileStatus, loading, error, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   )

@@ -3,6 +3,19 @@
 -- Run this in Supabase SQL Editor after 001-004
 
 -- ============================================
+-- Access Model
+-- ============================================
+--
+-- - No one can self-sign up.
+-- - Admins create teacher accounts.
+-- - Admins and teachers can create student accounts.
+-- - Teachers can only assign students to themselves.
+-- - Admins can assign students to any teacher and reassign students anytime.
+-- - Teachers cannot reset passwords for students who use username/internal-email login.
+-- - Every student must have one active teacher assignment.
+--
+
+-- ============================================
 -- 1. Profiles Table
 -- ============================================
 --
@@ -32,7 +45,7 @@ CREATE TABLE public.profiles (
     CONSTRAINT profiles_login_type_check
         CHECK (login_type IN ('email', 'username')),
     CONSTRAINT profiles_approval_status_check
-        CHECK (approval_status IN ('pending', 'approved', 'rejected')),
+        CHECK (approval_status IN ('approved', 'disabled')),
     CONSTRAINT profiles_username_format
         CHECK (username IS NULL OR username ~ '^[a-z0-9_-]+$')
 );
@@ -44,23 +57,14 @@ CREATE INDEX idx_profiles_role
 CREATE INDEX idx_profiles_username
     ON public.profiles(username);
 
-CREATE INDEX idx_profiles_approval_status
-    ON public.profiles(approval_status);
+CREATE INDEX idx_profiles_email
+    ON public.profiles(email);
 
--- Trigger to auto-update updated_at
-CREATE OR REPLACE FUNCTION update_profiles_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = now();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+CREATE INDEX idx_profiles_created_by
+    ON public.profiles(created_by);
 
-DROP TRIGGER IF EXISTS trigger_profiles_updated_at ON public.profiles;
-CREATE TRIGGER trigger_profiles_updated_at
-    BEFORE UPDATE ON public.profiles
-    FOR EACH ROW
-    EXECUTE FUNCTION update_profiles_updated_at();
+CREATE INDEX idx_profiles_active
+    ON public.profiles(active);
 
 
 -- ============================================
@@ -94,6 +98,9 @@ CREATE INDEX idx_student_teacher_assignments_student_id
 CREATE INDEX idx_student_teacher_assignments_teacher_id
     ON public.student_teacher_assignments(teacher_id);
 
+CREATE INDEX idx_student_teacher_assignments_assigned_by
+    ON public.student_teacher_assignments(assigned_by);
+
 CREATE INDEX idx_student_teacher_assignments_active
     ON public.student_teacher_assignments(active);
 
@@ -110,13 +117,15 @@ CREATE UNIQUE INDEX idx_student_teacher_assignments_one_active_per_student
 -- profiles.login_type:
 --   - 'email': User logs in with email/password (teachers, admins)
 --   - 'username': User logs in with username/password (students)
+--     Username is converted to internal email: ${username}@student.gauss.local
 --
 -- profiles.approval_status:
---   - 'pending': Account created but awaiting admin approval
---   - 'approved': Account is approved and can access the system
---   - 'rejected': Account was rejected by admin
+--   - 'approved': Account is active and can access the system
+--   - 'disabled': Account has been disabled by admin
 --
 -- student_teacher_assignments:
 --   - To reassign a student, set active=false and ended_at=now() on old row,
 --     then insert a new row with the new teacher.
---   - The partial unique index ensures data integrity for active assignments.
+--   - The partial unique index ensures each student has exactly one active teacher.
+--
+-- RLS policies will be added in a separate migration.
