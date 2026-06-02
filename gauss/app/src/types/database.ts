@@ -106,9 +106,21 @@ export interface QuestionWithSolution extends Question {
 
 export type AnswerChoice = 'A' | 'B' | 'C' | 'D' | 'E'
 
+export type QuestionStatus = 'unanswered' | 'correct' | 'wrong' | 'skipped' | 'flagged'
+
 export interface QuestionState {
-  selectedAnswer: AnswerChoice | null
-  isCorrect: boolean | null
-  isSkipped: boolean
-  isFlagged: boolean
+  practice_question_number: number
+  selected_answer: AnswerChoice | null
+  status: QuestionStatus
+  wrong_answers: AnswerChoice[]
+  flagged: boolean
+}
+
+export interface PracticeProgress {
+  total: number
+  answered: number
+  correct: number
+  wrong: number
+  skipped: number
+  flagged: number
 }

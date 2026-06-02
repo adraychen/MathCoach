@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { PDFViewer } from './PDFViewer'
 import { AnswerCard } from './AnswerCard'
 import { CoachingPanel } from './CoachingPanel'
-import type { QuestionWithSolution, QuestionState, AnswerChoice, Solution } from '../types/database'
+import { ProgressIndicator } from './ProgressIndicator'
+import { SummaryPanel } from './SummaryPanel'
+import type { QuestionWithSolution, QuestionState, AnswerChoice, Solution, PracticeProgress } from '../types/database'
 
 interface PracticeSetRow {
   id: string
@@ -46,6 +48,8 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pdfPage, setPdfPage] = useState(1)
+  const [showSummary, setShowSummary] = useState(false)
+  const [noFlaggedMessage, setNoFlaggedMessage] = useState(false)
 
   // Fetch questions and solutions
   useEffect(() => {
@@ -133,10 +137,11 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
         const initialStates = new Map<string, QuestionState>()
         questionsWithSolutions.forEach((q) => {
           initialStates.set(q.id, {
-            selectedAnswer: null,
-            isCorrect: null,
-            isSkipped: false,
-            isFlagged: false,
+            practice_question_number: q.practice_question_number,
+            selected_answer: null,
+            status: 'unanswered',
+            wrong_answers: [],
+            flagged: false,
           })
         })
         setQuestionStates(initialStates)
@@ -155,29 +160,57 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     fetchData()
   }, [setCode])
 
+  // Calculate progress
+  const progress = useMemo((): PracticeProgress => {
+    const states = Array.from(questionStates.values())
+    return {
+      total: states.length,
+      answered: states.filter(s => s.status === 'correct' || s.status === 'wrong').length,
+      correct: states.filter(s => s.status === 'correct').length,
+      wrong: states.filter(s => s.status === 'wrong').length,
+      skipped: states.filter(s => s.status === 'skipped').length,
+      flagged: states.filter(s => s.flagged).length,
+    }
+  }, [questionStates])
+
   const currentQuestion = questions[currentQuestionIndex]
   const currentState = currentQuestion
     ? questionStates.get(currentQuestion.id) || {
-        selectedAnswer: null,
-        isCorrect: null,
-        isSkipped: false,
-        isFlagged: false,
+        practice_question_number: currentQuestion.practice_question_number,
+        selected_answer: null,
+        status: 'unanswered' as const,
+        wrong_answers: [],
+        flagged: false,
       }
     : null
 
-  const goToNextQuestion = useCallback(() => {
-    if (currentQuestionIndex < questions.length - 1) {
-      const nextIndex = currentQuestionIndex + 1
-      setCurrentQuestionIndex(nextIndex)
+  const goToQuestion = useCallback((index: number) => {
+    if (index >= 0 && index < questions.length) {
+      setCurrentQuestionIndex(index)
       setCoachingOpen(false)
+      setShowSummary(false)
 
-      // Update PDF page
-      const nextQuestion = questions[nextIndex]
-      if (nextQuestion?.question_pdf_page) {
-        setPdfPage(nextQuestion.question_pdf_page)
+      const question = questions[index]
+      if (question?.question_pdf_page) {
+        setPdfPage(question.question_pdf_page)
       }
     }
-  }, [currentQuestionIndex, questions])
+  }, [questions])
+
+  const goToNextQuestion = useCallback(() => {
+    if (currentQuestionIndex < questions.length - 1) {
+      goToQuestion(currentQuestionIndex + 1)
+    } else {
+      // Reached the end - show summary
+      setShowSummary(true)
+    }
+  }, [currentQuestionIndex, questions.length, goToQuestion])
+
+  const goToPreviousQuestion = useCallback(() => {
+    if (currentQuestionIndex > 0) {
+      goToQuestion(currentQuestionIndex - 1)
+    }
+  }, [currentQuestionIndex, goToQuestion])
 
   const handleSelectAnswer = useCallback((answer: AnswerChoice) => {
     if (!currentQuestion) return
@@ -186,17 +219,28 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
     setQuestionStates((prev) => {
       const newStates = new Map(prev)
-      newStates.set(currentQuestion.id, {
-        ...prev.get(currentQuestion.id)!,
-        selectedAnswer: answer,
-        isCorrect,
-      })
+      const prevState = prev.get(currentQuestion.id)!
+
+      if (isCorrect) {
+        newStates.set(currentQuestion.id, {
+          ...prevState,
+          selected_answer: answer,
+          status: 'correct',
+        })
+      } else {
+        newStates.set(currentQuestion.id, {
+          ...prevState,
+          selected_answer: answer,
+          status: 'wrong',
+          wrong_answers: [...prevState.wrong_answers, answer],
+        })
+      }
       return newStates
     })
 
     if (isCorrect) {
       // Auto-advance after a short delay
-      setTimeout(goToNextQuestion, 800)
+      setTimeout(goToNextQuestion, 600)
     } else {
       // Open coaching panel on wrong answer
       setCoachingOpen(true)
@@ -208,9 +252,10 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
     setQuestionStates((prev) => {
       const newStates = new Map(prev)
+      const prevState = prev.get(currentQuestion.id)!
       newStates.set(currentQuestion.id, {
-        ...prev.get(currentQuestion.id)!,
-        isSkipped: true,
+        ...prevState,
+        status: 'skipped',
       })
       return newStates
     })
@@ -221,13 +266,14 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   const handleFlag = useCallback(() => {
     if (!currentQuestion) return
 
-    const currentFlagged = questionStates.get(currentQuestion.id)?.isFlagged || false
+    const currentFlagged = questionStates.get(currentQuestion.id)?.flagged || false
 
     setQuestionStates((prev) => {
       const newStates = new Map(prev)
+      const prevState = prev.get(currentQuestion.id)!
       newStates.set(currentQuestion.id, {
-        ...prev.get(currentQuestion.id)!,
-        isFlagged: !currentFlagged,
+        ...prevState,
+        flagged: !currentFlagged,
       })
       return newStates
     })
@@ -237,6 +283,54 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
       goToNextQuestion()
     }
   }, [currentQuestion, questionStates, goToNextQuestion])
+
+  const handleReviewFlagged = useCallback(() => {
+    // Find first flagged question
+    const flaggedIndex = questions.findIndex(q =>
+      questionStates.get(q.id)?.flagged === true
+    )
+
+    if (flaggedIndex >= 0) {
+      goToQuestion(flaggedIndex)
+      setNoFlaggedMessage(false)
+    } else {
+      setNoFlaggedMessage(true)
+      setTimeout(() => setNoFlaggedMessage(false), 2000)
+    }
+  }, [questions, questionStates, goToQuestion])
+
+  const handleReviewWrong = useCallback(() => {
+    // Find first wrong question
+    const wrongIndex = questions.findIndex(q =>
+      questionStates.get(q.id)?.status === 'wrong'
+    )
+
+    if (wrongIndex >= 0) {
+      goToQuestion(wrongIndex)
+    }
+  }, [questions, questionStates, goToQuestion])
+
+  const handleRestart = useCallback(() => {
+    // Reset all question states
+    const resetStates = new Map<string, QuestionState>()
+    questions.forEach((q) => {
+      resetStates.set(q.id, {
+        practice_question_number: q.practice_question_number,
+        selected_answer: null,
+        status: 'unanswered',
+        wrong_answers: [],
+        flagged: false,
+      })
+    })
+    setQuestionStates(resetStates)
+    setCurrentQuestionIndex(0)
+    setShowSummary(false)
+    setCoachingOpen(false)
+
+    if (questions[0]?.question_pdf_page) {
+      setPdfPage(questions[0].question_pdf_page)
+    }
+  }, [questions])
 
   const handlePdfPageChange = (page: number) => {
     setPdfPage(page)
@@ -268,6 +362,19 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     )
   }
 
+  if (showSummary) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100 p-4">
+        <SummaryPanel
+          progress={progress}
+          onRestart={handleRestart}
+          onReviewFlagged={handleReviewFlagged}
+          onReviewWrong={handleReviewWrong}
+        />
+      </div>
+    )
+  }
+
   if (!currentQuestion || !currentState) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -280,6 +387,19 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     <div className="h-screen flex bg-gray-100 p-3 gap-3">
       {/* Left Main Area */}
       <div className="flex-1 flex flex-col gap-2 min-w-0">
+        {/* Progress Indicator */}
+        <div className="flex-shrink-0 relative">
+          <ProgressIndicator
+            progress={progress}
+            onReviewFlagged={handleReviewFlagged}
+          />
+          {noFlaggedMessage && (
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-3 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-10">
+              No flagged questions yet.
+            </div>
+          )}
+        </div>
+
         {/* PDF Viewer - Top */}
         <div className="flex-1 min-h-0">
           <PDFViewer
@@ -298,6 +418,10 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
             onSelectAnswer={handleSelectAnswer}
             onSkip={handleSkip}
             onFlag={handleFlag}
+            onPrevious={goToPreviousQuestion}
+            onNext={goToNextQuestion}
+            canGoPrevious={currentQuestionIndex > 0}
+            canGoNext={currentQuestionIndex < questions.length - 1}
           />
         </div>
       </div>

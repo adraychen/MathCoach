@@ -1,4 +1,4 @@
-import { Flag, SkipForward, X } from 'lucide-react'
+import { Flag, SkipForward, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { AnswerChoice, QuestionState } from '../types/database'
 
 interface AnswerCardProps {
@@ -8,6 +8,10 @@ interface AnswerCardProps {
   onSelectAnswer: (answer: AnswerChoice) => void
   onSkip: () => void
   onFlag: () => void
+  onPrevious: () => void
+  onNext: () => void
+  canGoPrevious: boolean
+  canGoNext: boolean
 }
 
 const ANSWER_CHOICES: AnswerChoice[] = ['A', 'B', 'C', 'D', 'E']
@@ -19,44 +23,67 @@ export function AnswerCard({
   onSelectAnswer,
   onSkip,
   onFlag,
+  onPrevious,
+  onNext,
+  canGoPrevious,
+  canGoNext,
 }: AnswerCardProps) {
-  const { selectedAnswer, isCorrect, isFlagged } = questionState
-  const hasWrongAnswer = selectedAnswer !== null && isCorrect === false
+  const { status, wrong_answers, flagged } = questionState
+  const isWrong = status === 'wrong'
+  const isCorrect = status === 'correct'
+  const isAnswered = isCorrect || isWrong
 
   const getButtonStyle = (choice: AnswerChoice) => {
     const baseStyle = "w-11 h-11 rounded-lg font-semibold text-base transition-all duration-200 border-2 relative flex items-center justify-center"
 
-    // Wrong answer selected on this choice - show with X
-    if (choice === selectedAnswer && hasWrongAnswer) {
-      return `${baseStyle} bg-red-100 border-red-400 text-red-700`
+    // This choice was a wrong answer attempt
+    if (wrong_answers.includes(choice)) {
+      return `${baseStyle} bg-red-100 border-red-400 text-red-700 cursor-not-allowed`
     }
 
-    // Not answered yet or answered wrong (other choices still available)
-    if (!selectedAnswer || hasWrongAnswer) {
-      return `${baseStyle} bg-white border-gray-300 hover:border-blue-500 hover:bg-blue-50 cursor-pointer`
+    // Question answered correctly - disable all remaining
+    if (isCorrect) {
+      return `${baseStyle} bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed`
     }
 
-    // Correct answer was selected - disable all
-    return `${baseStyle} bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed`
+    // Available for selection
+    return `${baseStyle} bg-white border-gray-300 hover:border-blue-500 hover:bg-blue-50 cursor-pointer`
   }
 
   const handleAnswerClick = (choice: AnswerChoice) => {
-    // Allow clicking if no answer yet, or if previous answer was wrong
-    if (!selectedAnswer || hasWrongAnswer) {
-      onSelectAnswer(choice)
+    // Don't allow if already correct or if this choice was already tried
+    if (isCorrect || wrong_answers.includes(choice)) {
+      return
     }
+    onSelectAnswer(choice)
   }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2">
-      <div className="flex items-center justify-between gap-4">
-        {/* Left: Question label */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-sm font-semibold text-gray-700">
+      <div className="flex items-center justify-between gap-2">
+        {/* Left: Navigation and Question label */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={onPrevious}
+            disabled={!canGoPrevious}
+            className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            aria-label="Previous question"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="text-sm font-semibold text-gray-700 min-w-[70px] text-center">
             Q{currentQuestionNumber} / {totalQuestions}
           </span>
-          {isFlagged && (
-            <Flag size={14} className="text-orange-500" fill="currentColor" />
+          <button
+            onClick={onNext}
+            disabled={!canGoNext}
+            className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            aria-label="Next question"
+          >
+            <ChevronRight size={18} />
+          </button>
+          {flagged && (
+            <Flag size={14} className="text-orange-500 ml-1" fill="currentColor" />
           )}
         </div>
 
@@ -70,7 +97,7 @@ export function AnswerCard({
               aria-label={`Answer ${choice}`}
             >
               {choice}
-              {choice === selectedAnswer && hasWrongAnswer && (
+              {wrong_answers.includes(choice) && (
                 <X
                   size={14}
                   className="absolute -top-1 -right-1 text-red-600 bg-white rounded-full"
@@ -85,7 +112,8 @@ export function AnswerCard({
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={onSkip}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            disabled={isAnswered}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label="Skip question"
           >
             <SkipForward size={14} />
@@ -94,7 +122,7 @@ export function AnswerCard({
           <button
             onClick={onFlag}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              isFlagged
+              flagged
                 ? 'text-orange-700 bg-orange-100 hover:bg-orange-200'
                 : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
             }`}

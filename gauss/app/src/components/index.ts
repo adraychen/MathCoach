@@ -1,4 +1,6 @@
 export { PDFViewer } from './PDFViewer'
 export { AnswerCard } from './AnswerCard'
 export { CoachingPanel } from './CoachingPanel'
+export { ProgressIndicator } from './ProgressIndicator'
+export { SummaryPanel } from './SummaryPanel'
 export { PracticeScreen } from './PracticeScreen'
