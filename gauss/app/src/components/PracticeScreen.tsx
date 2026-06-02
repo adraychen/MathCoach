@@ -277,9 +277,9 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   }
 
   return (
-    <div className="h-screen flex bg-gray-100 p-4 gap-4">
+    <div className="h-screen flex bg-gray-100 p-3 gap-3">
       {/* Left Main Area */}
-      <div className="flex-1 flex flex-col gap-4 min-w-0">
+      <div className="flex-1 flex flex-col gap-2 min-w-0">
         {/* PDF Viewer - Top */}
         <div className="flex-1 min-h-0">
           <PDFViewer
@@ -295,7 +295,6 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
             currentQuestionNumber={currentQuestion.practice_question_number}
             totalQuestions={questions.length}
             questionState={currentState}
-            correctAnswer={currentQuestion.correct_answer}
             onSelectAnswer={handleSelectAnswer}
             onSkip={handleSkip}
             onFlag={handleFlag}
