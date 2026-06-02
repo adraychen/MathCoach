@@ -23,6 +23,7 @@ class BlueprintSummary(BaseModel):
     blueprint_code: str
     blueprint_name: str
     primary_topic: str | None
+    secondary_topic: str | None
     difficulty_level: str | None
     visual_required: bool | None
 

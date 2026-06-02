@@ -54,10 +54,10 @@ def get_blueprints(db: Session) -> list[dict[str, Any]]:
     result = db.execute(
         text("""
             SELECT id, blueprint_code, blueprint_name, primary_topic,
-                   difficulty_level, visual_required
+                   secondary_topic, difficulty_level, visual_required
             FROM mathcoach_question_blueprints
             WHERE program_name = 'Waterloo Gauss' AND is_active = true
-            ORDER BY blueprint_code
+            ORDER BY primary_topic, secondary_topic, blueprint_name
         """)
     )
     return [dict(row._mapping) for row in result]

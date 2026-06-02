@@ -14,6 +14,7 @@ interface Blueprint {
   blueprint_code: string
   blueprint_name: string
   primary_topic: string | null
+  secondary_topic: string | null
   difficulty_level: string | null
   visual_required: boolean | null
 }
@@ -256,23 +257,46 @@ export function GeneratePage() {
         <CardContent className="space-y-6">
           {/* Blueprint Selection */}
           <div className="space-y-3">
-            <Label className="text-base">Blueprint</Label>
+            <Label className="text-base">Select Blueprint</Label>
             {blueprints.length === 0 ? (
               <p className="text-sm text-muted-foreground">No blueprints found</p>
             ) : (
-              <RadioGroup value={selectedBlueprint} onValueChange={setSelectedBlueprint}>
-                {blueprints.map((bp) => (
-                  <div key={bp.id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={bp.blueprint_code} id={`bp-${bp.blueprint_code}`} />
-                    <Label htmlFor={`bp-${bp.blueprint_code}`} className="font-normal cursor-pointer">
-                      {bp.blueprint_name}
-                      <span className="text-muted-foreground ml-2 text-sm">
-                        ({bp.primary_topic} - {bp.difficulty_level})
-                      </span>
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+              <div className="border rounded max-h-80 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="w-10 p-2"></th>
+                      <th className="text-left p-2">Primary Topic</th>
+                      <th className="text-left p-2">Secondary Topic</th>
+                      <th className="text-left p-2">Blueprint Name</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {blueprints.map((bp) => (
+                      <tr
+                        key={bp.id}
+                        className={`cursor-pointer hover:bg-muted/50 ${
+                          selectedBlueprint === bp.blueprint_code ? 'bg-primary/10' : ''
+                        }`}
+                        onClick={() => setSelectedBlueprint(bp.blueprint_code)}
+                      >
+                        <td className="p-2 text-center">
+                          <input
+                            type="radio"
+                            name="blueprint-selection"
+                            checked={selectedBlueprint === bp.blueprint_code}
+                            onChange={() => setSelectedBlueprint(bp.blueprint_code)}
+                            className="h-4 w-4"
+                          />
+                        </td>
+                        <td className="p-2">{bp.primary_topic || '-'}</td>
+                        <td className="p-2">{bp.secondary_topic || '-'}</td>
+                        <td className="p-2 font-medium">{bp.blueprint_name}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
