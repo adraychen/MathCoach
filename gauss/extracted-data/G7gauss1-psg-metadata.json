@@ -1,0 +1,599 @@
+[
+  {
+    "practice_question_number": 1,
+    "source_year": 2017,
+    "source_grade": 7,
+    "source_question_number": 1,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Operations"
+    ],
+    "correct_answer": "B",
+    "short_problem_summary": "Evaluate (2 + 4 + 6) - (1 + 3 + 5).",
+    "psg_solution_text": "Evaluating, (2 + 4 + 6) - (1 + 3 + 5) = 12 - 9 = 3.",
+    "psg_solution_summary": "Sum the numbers in each set of brackets first, then subtract.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 2,
+    "source_year": 2005,
+    "source_grade": 7,
+    "source_question_number": 2,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Decimals",
+      "Operations"
+    ],
+    "correct_answer": "E",
+    "short_problem_summary": "Evaluate 0.8 - 0.07.",
+    "psg_solution_text": "Calculating, 0.8 - 0.07 = 0.80 - 0.07 = 0.73.",
+    "psg_solution_summary": "Align decimal places by adding a placeholder zero before subtracting.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 3,
+    "source_year": 2008,
+    "source_grade": 7,
+    "source_question_number": 3,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Fractions/Ratios"
+    ],
+    "correct_answer": "D",
+    "short_problem_summary": "Evaluate 1/2 + 1/4 + 1/8.",
+    "psg_solution_text": "Using a common denominator of 8, we have 1/2 + 1/4 + 1/8 = 4/8 + 2/8 + 1/8 = 7/8.",
+    "psg_solution_summary": "Find a common denominator of 8 to add the fractions.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 4,
+    "source_year": 2015,
+    "source_grade": 7,
+    "source_question_number": 4,
+    "primary_topics": [
+      "Algebra and Equations"
+    ],
+    "secondary_topics": [
+      "Equations Solving"
+    ],
+    "correct_answer": "B",
+    "short_problem_summary": "Find the mass of one rectangle relative to circles on a balanced scale.",
+    "psg_solution_text": "The equal-arm balance shows that 2 rectangles have the same mass as 6 circles. If we organize these shapes into two equal piles on both sides of the balance, then we see that 1 rectangle has the same mass as 3 circles.",
+    "psg_solution_summary": "Divide the quantity on both sides of the balance by 2.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 5,
+    "source_year": 2018,
+    "source_grade": 7,
+    "source_question_number": 5,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Operations"
+    ],
+    "correct_answer": "C",
+    "short_problem_summary": "Identify which purchase combination costs more than $18.",
+    "psg_solution_text": "The cost of nine $1 items and five $2 items is (9 x $1) + (5 x $2), which is $9 + $10 or $19. The correct answer is (C). (We may check that each of the remaining four answers gives a cost that is less than $18.)",
+    "psg_solution_summary": "Calculate total costs for each option; 9($1) + 5($2) equals $19.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 6,
+    "source_year": 2008,
+    "source_grade": 7,
+    "source_question_number": 6,
+    "primary_topics": [
+      "Geometry and Measurement"
+    ],
+    "secondary_topics": [
+      "Angles"
+    ],
+    "correct_answer": "A",
+    "short_problem_summary": "Find the value of x if five equal angles of x° form a straight line.",
+    "psg_solution_text": "Since PQ is a straight line, then x° + x° + x° + x° + x° = 180° or 5x = 180 or x = 36.",
+    "psg_solution_summary": "Divide the 180 degrees of a straight line by five.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 7,
+    "source_year": 2011,
+    "source_grade": 7,
+    "source_question_number": 7,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Fractions/Ratios"
+    ],
+    "correct_answer": "E",
+    "short_problem_summary": "Evaluate the sum of 1/3 added seven times.",
+    "psg_solution_text": "Since we are adding 1/3 seven times, the result is 7 × 1/3 = 7/3.",
+    "psg_solution_summary": "Recognize that repeated addition is multiplication: seven copies of 1/3 equals 7/3.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 8,
+    "source_year": 2023,
+    "source_grade": 7,
+    "source_question_number": 8,
+    "primary_topics": [
+      "Geometry and Measurement"
+    ],
+    "secondary_topics": [
+      "Circles",
+      "Measurement"
+    ],
+    "correct_answer": "B",
+    "short_problem_summary": "Find the greatest possible length of a segment joining two points on a circle with radius 4 cm.",
+    "psg_solution_text": "The line segment with greatest length that joins two points on a circle is a diameter of the circle. Since the circle has a radius of 4 cm, then its diameter has length 2 x 4 cm = 8 cm, and so the greatest possible length of the line segment is 8 cm.",
+    "psg_solution_summary": "Identify that the diameter is the longest chord and is twice the radius.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 9,
+    "source_year": 2007,
+    "source_grade": 7,
+    "source_question_number": 9,
+    "primary_topics": [
+      "Geometry and Measurement"
+    ],
+    "secondary_topics": [
+      "Transformations"
+    ],
+    "correct_answer": "D",
+    "short_problem_summary": "Determine how the word \"BANK\" appears when viewed through a clear window from inside.",
+    "psg_solution_text": "When the word BANK is viewed from the inside of the window, the letters appear in the reverse order and the letters themselves are all backwards, so the word appears as (D).",
+    "psg_solution_summary": "Apply a horizontal reflection to both the word order and individual letter shapes.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 10,
+    "source_year": 2014,
+    "source_grade": 7,
+    "source_question_number": 10,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Operations"
+    ],
+    "correct_answer": "C",
+    "short_problem_summary": "Identify which expression equals 17.",
+    "psg_solution_text": "In the table below, each of the five expressions is evaluated using the correct order of operations. The only expression that is equal to 17 is 3 + 4 x 5 - 6, or (C).",
+    "psg_solution_summary": "Evaluate expressions using BEDMAS, prioritizing the multiplication.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Easy"
+  },
+  {
+    "practice_question_number": 11,
+    "source_year": 2022,
+    "source_grade": 7,
+    "source_question_number": 11,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Prime Numbers",
+      "Divisibility",
+      "Factoring"
+    ],
+    "correct_answer": "C",
+    "short_problem_summary": "Calculate the sum of the prime factors of 42.",
+    "psg_solution_text": "Since 42 is an even number, then 2 is a factor of 42. Since 42 = 2 x 21 and 21 = 3 x 7, then 42 = 2 x 3 x 7. Each of 2, 3 and 7 is a prime number and each is a factor of 42. Thus, the sum of the prime factors of 42 is 2 + 3 + 7 = 12.",
+    "psg_solution_summary": "Factor 42 into primes (2, 3, 7) and sum them.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 12,
+    "source_year": 2005,
+    "source_grade": 7,
+    "source_question_number": 12,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Rates",
+      "Decimals",
+      "Estimation",
+      "Measurement"
+    ],
+    "correct_answer": "E",
+    "short_problem_summary": "Find the final height of a bamboo plant after 7 days growing at 105 cm/day.",
+    "psg_solution_text": "Since the bamboo plant grows at a rate of 105 cm per day and there are 7 days from May 1st and May 8th, then it grows 7 x 105 = 735 cm in this time period. Since 735 cm = 7.35 m, then the height of the plant on May 8th is 2 + 7.35 = 9.35 m.",
+    "psg_solution_summary": "Calculate total growth in cm, convert to meters, and add to the initial height.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 13,
+    "source_year": 2010,
+    "source_grade": 7,
+    "source_question_number": 13,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Patterning/Sequences/Series",
+      "Averages"
+    ],
+    "correct_answer": "E",
+    "short_problem_summary": "Find the smallest of five consecutive integers with a mean of 21.",
+    "psg_solution_text": "The mean of 5 consecutive integers is equal to the number in the middle. Since the numbers have a mean of 21... the numbers are 21 - 2, 21 - 1, 21, 21 + 1, 21 + 2. The smallest... is 19.",
+    "psg_solution_summary": "Use the property that the middle term of five consecutive integers is the mean.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 14,
+    "source_year": 2019,
+    "source_grade": 7,
+    "source_question_number": 14,
+    "primary_topics": [
+      "Counting and Probability"
+    ],
+    "secondary_topics": [
+      "Probability",
+      "Prime Numbers"
+    ],
+    "correct_answer": "C",
+    "short_problem_summary": "Find the probability of spinning an odd prime number on an 8-section spinner (2-9).",
+    "psg_solution_text": "On the spinner given, the prime numbers that are odd are 3, 5 and 7. Since the spinner is divided into 8 equal sections, the probability that the arrow stops in a section containing a prime number that is odd is 3/8.",
+    "psg_solution_summary": "Count the odd prime sections (3, 5, 7) and divide by the total number of sections.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 15,
+    "source_year": 2023,
+    "source_grade": 7,
+    "source_question_number": 15,
+    "primary_topics": [
+      "Number Sense",
+      "Data Analysis"
+    ],
+    "secondary_topics": [
+      "Averages",
+      "Expressions"
+    ],
+    "correct_answer": "D",
+    "short_problem_summary": "Find n if the mean of {2, 9, 4, n, 2n} is 6.",
+    "psg_solution_text": "The list contains 5 numbers. The average is 6, so the sum of the 5 numbers is 5 x 6 = 30. That is, 2 + 9 + 4 + n + 2n = 30 or 15 + 3n = 30, and so 3n = 15 or n = 5.",
+    "psg_solution_summary": "Set the sum of the list equal to the average multiplied by the count of terms.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 16,
+    "source_year": 2022,
+    "source_grade": 7,
+    "source_question_number": 16,
+    "primary_topics": [
+      "Counting and Probability"
+    ],
+    "secondary_topics": [
+      "Probability",
+      "Counting",
+      "Fractions/Ratios"
+    ],
+    "correct_answer": "C",
+    "short_problem_summary": "Find the probability that three coin tosses are all the same.",
+    "psg_solution_text": "There are 8 possible outcomes: HHH, HHT, HTH, THH, HTT, THT, TTH, and TTT. Of these 8 outcomes, there are exactly 2 whose outcomes are all the same (HHH and TTT). Therefore, the probability... is 2/8 = 1/4.",
+    "psg_solution_summary": "Identify the 2 desired outcomes out of 8 total possible combinations.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 17,
+    "source_year": 2012,
+    "source_grade": 7,
+    "source_question_number": 17,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Fractions/Ratios"
+    ],
+    "correct_answer": "C",
+    "short_problem_summary": "Calculate total kindergarteners if JK:SK ratio is 8:5 and there are 128 JKs.",
+    "psg_solution_text": "The number of SKs is 5/8 of the number of JKs. Since JKs is 128, the number of SKs is 5/8 x 128 = 80. The total number... is 128 + 80 = 208.",
+    "psg_solution_summary": "Determine the number of students in the second group using the ratio and sum both groups.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 18,
+    "source_year": 2021,
+    "source_grade": 7,
+    "source_question_number": 18,
+    "primary_topics": [
+      "Geometry and Measurement"
+    ],
+    "secondary_topics": [
+      "Measurement",
+      "Triangles"
+    ],
+    "correct_answer": "B",
+    "short_problem_summary": "Find length AM in isosceles ABC given perimeters of ABC (64) and ABM (40).",
+    "psg_solution_text": "Since AB = CA and BM = MC, half of the perimeter of ABC is AB + BM = 32. The perimeter of ABM is AM + AB + BM = 40. Since AB + BM = 32, then AM = 40 - 32 = 8.",
+    "psg_solution_summary": "Use symmetry to relate the semi-perimeter of the large triangle to the side sum of the smaller triangle.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 19,
+    "source_year": 2006,
+    "source_grade": 7,
+    "source_question_number": 19,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Measurement",
+      "Estimation"
+    ],
+    "correct_answer": "B",
+    "short_problem_summary": "Identify which time duration is closest to 1,000,000 seconds.",
+    "psg_solution_text": "In one day there are 24 x 3600 = 86,400 seconds. Therefore, 10^6 seconds is equal to 10^6 / 86,400 ≈ 11.574 days, which of the given choices is closest to 10 days.",
+    "psg_solution_summary": "Convert seconds to days to compare with the given multiple-choice options.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 20,
+    "source_year": 2006,
+    "source_grade": 7,
+    "source_question_number": 20,
+    "primary_topics": [
+      "Geometry and Measurement"
+    ],
+    "secondary_topics": [
+      "Transformations"
+    ],
+    "correct_answer": "B",
+    "short_problem_summary": "Determine the transformed orientation of 'A' based on transformations shown for 'P'.",
+    "psg_solution_text": "One possible way... is to reflect the grid in the vertical line... and then rotate the grid 90° counterclockwise... Applying these transformations to the grid containing the A, we obtain (B).",
+    "psg_solution_summary": "Identify the sequence of reflection and rotation and apply them to the new letter grid.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Medium"
+  },
+  {
+    "practice_question_number": 21,
+    "source_year": 2019,
+    "source_grade": 7,
+    "source_question_number": 21,
+    "primary_topics": [
+      "Other",
+      "Algebra and Equations"
+    ],
+    "secondary_topics": [
+      "Logic",
+      "Inequalities"
+    ],
+    "correct_answer": "D",
+    "short_problem_summary": "Determine which statement about cat/dog ownership counts must be true.",
+    "psg_solution_text": "We separate information: Alice owns more dogs than Kathy and Bruce; Kathy and Bruce own more cats than Alice. Bullet 2 and 3 show Alice owns the most dogs. Answer (D) must be true.",
+    "psg_solution_summary": "Organize the comparative statements into inequalities to find the definite conclusion.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Hard"
+  },
+  {
+    "practice_question_number": 22,
+    "source_year": 2005,
+    "source_grade": 7,
+    "source_question_number": 22,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Fractions/Ratios"
+    ],
+    "correct_answer": "C",
+    "short_problem_summary": "Find the ratio of apples to lemons given apples:oranges and oranges:lemons.",
+    "psg_solution_text": "Assuming 20 oranges: ratio of apples to oranges is 1:4 (so 5 apples); ratio of oranges to lemons is 5:2 (so 8 lemons). Ratio of apples to lemons is 5:8.",
+    "psg_solution_summary": "Select a common multiple for the shared quantity (oranges) to calculate the external ratio.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Hard"
+  },
+  {
+    "practice_question_number": 23,
+    "source_year": 2006,
+    "source_grade": 7,
+    "source_question_number": 23,
+    "primary_topics": [
+      "Number Sense"
+    ],
+    "secondary_topics": [
+      "Logic",
+      "Equations Solving",
+      "Digits"
+    ],
+    "correct_answer": "D",
+    "short_problem_summary": "Find the units digit of a sum using digits 0-6 exactly once in a 2-digit addition.",
+    "psg_solution_text": "Sum cannot be 200+, so E=1. Logical checks show A+C must be 10 (4 and 6). Remaining digits (2, 3, 5) mean the units digit G must be 5. (Example: 42 + 63 = 105).",
+    "psg_solution_summary": "Use logical elimination based on place value constraints and the available digits.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Hard"
+  },
+  {
+    "practice_question_number": 24,
+    "source_year": 2005,
+    "source_grade": 7,
+    "source_question_number": 24,
+    "primary_topics": [
+      "Algebra and Equations"
+    ],
+    "secondary_topics": [
+      "Fractions/Ratios",
+      "Equations Solving"
+    ],
+    "correct_answer": "D",
+    "short_problem_summary": "Find the speed ratio for two runners passing at the same three equidistant places.",
+    "psg_solution_text": "Since they pass at the same three places, the places are equally spaced at 1/3 track intervals. Beryl must run 2/3 of the track while Alphonse runs 1/3 in the opposite direction. Ratio is 2:1.",
+    "psg_solution_summary": "Translate equidistant meeting points into relative distances traveled by each runner.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Hard"
+  },
+  {
+    "practice_question_number": 25,
+    "source_year": 2023,
+    "source_grade": 7,
+    "source_question_number": 25,
+    "primary_topics": [
+      "Counting and Probability"
+    ],
+    "secondary_topics": [
+      "Counting",
+      "Graphs",
+      "Logic"
+    ],
+    "correct_answer": "B",
+    "short_problem_summary": "Find the sum of all possible percentage values k for students in shared activities.",
+    "psg_solution_text": "Represent in a Venn diagram. Total students n must be a multiple of 10. Solving for possible values of n and checking integer constraints on variables x, y, z reveals k can be 90, 40, 30, 15, 10. Sum = 185.",
+    "psg_solution_summary": "Use a Venn diagram and divisibility rules to bound and test the possible integer solutions.",
+    "detailed_solution_status": "not_available",
+    "coaching_available": false,
+    "key_strategy": null,
+    "possible_hint_1": null,
+    "possible_hint_2": null,
+    "common_mistake": null,
+    "difficulty_band": "Hard"
+  }
+]
