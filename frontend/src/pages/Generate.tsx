@@ -8,14 +8,18 @@ const API_BASE = import.meta.env.VITE_API_URL || ''
 const GENERATION_DELAY_MS = 45000 // 45 seconds between API calls (Groq: 6000 TPM, ~3885 tokens/question)
 const PLAN_REFRESH_INTERVAL = 3 // Refresh plan status every N questions
 
-interface Blueprint {
-  id: string
-  blueprint_code: string
-  blueprint_name: string
-  primary_topic: string | null
-  secondary_topic: string | null
-  difficulty_level: string | null
-  visual_required: boolean | null
+interface TopicItem {
+  primary_topic: string
+  secondary_topic: string
+  blueprint_code: string | null
+  blueprint_name: string | null
+  blueprint_id: string | null
+  has_blueprint: boolean
+}
+
+interface TopicGroup {
+  primary_topic: string
+  items: TopicItem[]
 }
 
 interface GeneratedQuestion {
@@ -54,12 +58,13 @@ interface PlanStatus {
 }
 
 export function GeneratePage() {
-  const [blueprints, setBlueprints] = useState<Blueprint[]>([])
+  const [topicGroups, setTopicGroups] = useState<TopicGroup[]>([])
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [selectedBlueprint, setSelectedBlueprint] = useState<string>('')
   const [count, setCount] = useState(1)
   const [saveToDb, setSaveToDb] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isLoadingBlueprints, setIsLoadingBlueprints] = useState(true)
+  const [isLoadingTopics, setIsLoadingTopics] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([])
 
@@ -70,24 +75,32 @@ export function GeneratePage() {
   const [planLog, setPlanLog] = useState<string[]>([])
   const stopGenerationRef = useRef(false)
 
-  // Load blueprints
+  // Load topics
   useEffect(() => {
-    const loadBlueprints = async () => {
+    const loadTopics = async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/generation/blueprints`)
-        if (!response.ok) throw new Error('Failed to load blueprints')
+        const response = await fetch(`${API_BASE}/api/generation/topics`)
+        if (!response.ok) throw new Error('Failed to load topics')
         const data = await response.json()
-        setBlueprints(data.blueprints)
-        if (data.blueprints.length > 0) {
-          setSelectedBlueprint(data.blueprints[0].blueprint_code)
+        setTopicGroups(data.groups)
+        // Expand all groups by default
+        setExpandedGroups(new Set(data.groups.map((g: TopicGroup) => g.primary_topic)))
+        // Select first available blueprint
+        for (const group of data.groups) {
+          for (const item of group.items) {
+            if (item.has_blueprint && item.blueprint_code) {
+              setSelectedBlueprint(item.blueprint_code)
+              return
+            }
+          }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load blueprints')
+        setError(err instanceof Error ? err.message : 'Failed to load topics')
       } finally {
-        setIsLoadingBlueprints(false)
+        setIsLoadingTopics(false)
       }
     }
-    loadBlueprints()
+    loadTopics()
   }, [])
 
   // Load generation plan
@@ -108,6 +121,18 @@ export function GeneratePage() {
   useEffect(() => {
     loadPlan()
   }, [loadPlan])
+
+  const toggleGroup = (primaryTopic: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(primaryTopic)) {
+        next.delete(primaryTopic)
+      } else {
+        next.add(primaryTopic)
+      }
+      return next
+    })
+  }
 
   // Generate according to plan
   const handlePlanGenerate = async () => {
@@ -235,10 +260,10 @@ export function GeneratePage() {
     }
   }
 
-  if (isLoadingBlueprints) {
+  if (isLoadingTopics) {
     return (
       <div className="max-w-4xl mx-auto text-center">
-        <p>Loading blueprints...</p>
+        <p>Loading topics...</p>
       </div>
     )
   }
@@ -249,52 +274,82 @@ export function GeneratePage() {
         <CardHeader>
           <CardTitle>Question Generation</CardTitle>
           <CardDescription>
-            Generate questions using AI from blueprint templates
+            Generate questions using AI from blueprint templates. Topics without blueprints are disabled.
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* Blueprint Selection */}
+          {/* Topic Selection */}
           <div className="space-y-3">
-            <Label className="text-base">Select Blueprint</Label>
-            {blueprints.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No blueprints found</p>
+            <Label className="text-base">Select Topic & Blueprint</Label>
+            {topicGroups.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No topics found</p>
             ) : (
-              <div className="border rounded max-h-80 overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted sticky top-0">
-                    <tr>
-                      <th className="w-10 p-2"></th>
-                      <th className="text-left p-2">Primary Topic</th>
-                      <th className="text-left p-2">Secondary Topic</th>
-                      <th className="text-left p-2">Blueprint Name</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {blueprints.map((bp) => (
-                      <tr
-                        key={bp.id}
-                        className={`cursor-pointer hover:bg-muted/50 ${
-                          selectedBlueprint === bp.blueprint_code ? 'bg-primary/10' : ''
-                        }`}
-                        onClick={() => setSelectedBlueprint(bp.blueprint_code)}
-                      >
-                        <td className="p-2 text-center">
-                          <input
-                            type="radio"
-                            name="blueprint-selection"
-                            checked={selectedBlueprint === bp.blueprint_code}
-                            onChange={() => setSelectedBlueprint(bp.blueprint_code)}
-                            className="h-4 w-4"
-                          />
-                        </td>
-                        <td className="p-2">{bp.primary_topic || '-'}</td>
-                        <td className="p-2">{bp.secondary_topic || '-'}</td>
-                        <td className="p-2 font-medium">{bp.blueprint_name}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="border rounded max-h-96 overflow-y-auto">
+                {topicGroups.map((group) => (
+                  <div key={group.primary_topic} className="border-b last:border-b-0">
+                    {/* Group Header */}
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-3 bg-muted/50 hover:bg-muted text-left font-medium"
+                      onClick={() => toggleGroup(group.primary_topic)}
+                    >
+                      <span className="capitalize">{group.primary_topic}</span>
+                      <span className="text-muted-foreground text-sm">
+                        {expandedGroups.has(group.primary_topic) ? '▼' : '▶'}
+                        {' '}
+                        ({group.items.filter(i => i.has_blueprint).length}/{group.items.length} available)
+                      </span>
+                    </button>
+
+                    {/* Group Items */}
+                    {expandedGroups.has(group.primary_topic) && (
+                      <div className="divide-y">
+                        {group.items.map((item, idx) => (
+                          <div
+                            key={`${item.secondary_topic}-${idx}`}
+                            className={`flex items-center p-2 pl-6 ${
+                              item.has_blueprint
+                                ? 'cursor-pointer hover:bg-muted/30'
+                                : 'opacity-50 cursor-not-allowed'
+                            } ${
+                              selectedBlueprint === item.blueprint_code ? 'bg-primary/10' : ''
+                            }`}
+                            onClick={() => {
+                              if (item.has_blueprint && item.blueprint_code) {
+                                setSelectedBlueprint(item.blueprint_code)
+                              }
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name="topic-selection"
+                              checked={selectedBlueprint === item.blueprint_code}
+                              onChange={() => {
+                                if (item.has_blueprint && item.blueprint_code) {
+                                  setSelectedBlueprint(item.blueprint_code)
+                                }
+                              }}
+                              disabled={!item.has_blueprint}
+                              className="h-4 w-4 mr-3"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm capitalize">{item.secondary_topic}</span>
+                              {item.blueprint_name && (
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  → {item.blueprint_name}
+                                </span>
+                              )}
+                            </div>
+                            {!item.has_blueprint && (
+                              <span className="text-xs text-muted-foreground">No blueprint</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>

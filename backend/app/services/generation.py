@@ -63,6 +63,29 @@ def get_blueprints(db: Session) -> list[dict[str, Any]]:
     return [dict(row._mapping) for row in result]
 
 
+def get_topic_taxonomy(db: Session) -> list[dict[str, Any]]:
+    """Get all topics from taxonomy with blueprint info if available."""
+    result = db.execute(
+        text("""
+            SELECT
+                t.primary_topic,
+                t.secondary_topic,
+                b.blueprint_code,
+                b.blueprint_name,
+                b.id as blueprint_id
+            FROM mathcoach_topic_taxonomy t
+            LEFT JOIN mathcoach_question_blueprints b
+                ON LOWER(t.primary_topic) = LOWER(b.primary_topic)
+                AND LOWER(t.secondary_topic) = LOWER(b.secondary_topic)
+                AND b.is_active = true
+                AND b.program_name = 'Waterloo Gauss'
+            WHERE t.is_active = true
+            ORDER BY t.primary_topic, t.secondary_topic, b.blueprint_name
+        """)
+    )
+    return [dict(row._mapping) for row in result]
+
+
 def get_generation_plan(db: Session) -> list[dict[str, Any]]:
     """Get generation plan with current progress."""
     result = db.execute(

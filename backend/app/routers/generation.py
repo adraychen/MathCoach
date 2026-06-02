@@ -13,6 +13,7 @@ from ..services.generation import (
     get_next_blueprint_to_generate,
     generate_question,
     save_question_to_db,
+    get_topic_taxonomy,
 )
 
 router = APIRouter(prefix="/api/generation", tags=["generation"])
@@ -82,6 +83,24 @@ class GenerateNextResponse(BaseModel):
     completed: bool
 
 
+class TopicItem(BaseModel):
+    primary_topic: str
+    secondary_topic: str
+    blueprint_code: str | None
+    blueprint_name: str | None
+    blueprint_id: str | None
+    has_blueprint: bool
+
+
+class TopicGroup(BaseModel):
+    primary_topic: str
+    items: list[TopicItem]
+
+
+class TopicTaxonomyResponse(BaseModel):
+    groups: list[TopicGroup]
+
+
 @router.get("/blueprints", response_model=BlueprintListResponse)
 async def list_blueprints(db: Session = Depends(get_db)):
     """Get all active blueprints for question generation."""
@@ -89,6 +108,36 @@ async def list_blueprints(db: Session = Depends(get_db)):
     return BlueprintListResponse(
         blueprints=[BlueprintSummary(**{**b, "id": str(b["id"])}) for b in blueprints]
     )
+
+
+@router.get("/topics", response_model=TopicTaxonomyResponse)
+async def list_topics(db: Session = Depends(get_db)):
+    """Get all topics grouped by primary topic with blueprint availability."""
+    topics = get_topic_taxonomy(db)
+
+    # Group by primary_topic
+    groups_dict: dict[str, list[TopicItem]] = {}
+    for t in topics:
+        primary = t["primary_topic"]
+        if primary not in groups_dict:
+            groups_dict[primary] = []
+
+        groups_dict[primary].append(TopicItem(
+            primary_topic=t["primary_topic"],
+            secondary_topic=t["secondary_topic"],
+            blueprint_code=t["blueprint_code"],
+            blueprint_name=t["blueprint_name"],
+            blueprint_id=str(t["blueprint_id"]) if t["blueprint_id"] else None,
+            has_blueprint=t["blueprint_code"] is not None,
+        ))
+
+    # Convert to list of groups
+    groups = [
+        TopicGroup(primary_topic=primary, items=items)
+        for primary, items in sorted(groups_dict.items())
+    ]
+
+    return TopicTaxonomyResponse(groups=groups)
 
 
 @router.post("/generate", response_model=GenerateResponse)
