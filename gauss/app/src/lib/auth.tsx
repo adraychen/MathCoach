@@ -2,11 +2,11 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
-interface StudentProfile {
+interface UserProfile {
   id: string
-  username: string
+  username: string | null
   display_name: string | null
-  role: 'student' | 'admin'
+  role: 'student' | 'admin' | 'teacher'
   active: boolean
   must_change_password: boolean
 }
@@ -14,10 +14,10 @@ interface StudentProfile {
 interface AuthContextType {
   user: User | null
   session: Session | null
-  profile: StudentProfile | null
+  profile: UserProfile | null
   loading: boolean
   error: string | null
-  signIn: (username: string, password: string) => Promise<{ error: string | null }>
+  signIn: (identifier: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
 }
 
@@ -25,27 +25,43 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const STUDENT_EMAIL_DOMAIN = '@student.gauss.local'
 
+function isEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<StudentProfile | null>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Load profile for a user
-  const loadProfile = async (userId: string): Promise<StudentProfile | null> => {
-    const { data, error } = await supabase
-      .from('student_profiles')
-      .select('*')
+  // Load profile for a user - try profiles table first, fallback to student_profiles
+  const loadProfile = async (userId: string): Promise<UserProfile | null> => {
+    // Try profiles table first
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, role, active, must_change_password')
       .eq('id', userId)
       .single()
 
-    if (error) {
-      console.error('Error loading profile:', error)
-      return null
+    if (!profileError && profileData) {
+      return profileData as UserProfile
     }
 
-    return data as StudentProfile
+    // Fallback to student_profiles table
+    const { data: studentData, error: studentError } = await supabase
+      .from('student_profiles')
+      .select('id, username, display_name, role, active, must_change_password')
+      .eq('id', userId)
+      .single()
+
+    if (!studentError && studentData) {
+      return studentData as UserProfile
+    }
+
+    console.error('Error loading profile:', profileError || studentError)
+    return null
   }
 
   // Initialize auth state
@@ -91,11 +107,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const signIn = async (username: string, password: string): Promise<{ error: string | null }> => {
+  const signIn = async (identifier: string, password: string): Promise<{ error: string | null }> => {
     setError(null)
 
-    // Convert username to internal email
-    const email = `${username.toLowerCase()}${STUDENT_EMAIL_DOMAIN}`
+    // Determine if identifier is email or username
+    let email: string
+    if (isEmail(identifier)) {
+      // Use email directly
+      email = identifier.toLowerCase()
+    } else {
+      // Convert username to internal email
+      email = `${identifier.toLowerCase()}${STUDENT_EMAIL_DOMAIN}`
+    }
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,

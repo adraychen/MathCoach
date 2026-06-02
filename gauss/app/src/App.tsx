@@ -1,6 +1,8 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import { PracticeScreen } from './components/PracticeScreen'
 import { LoginScreen } from './components/LoginScreen'
+import { ResetPasswordScreen } from './components/ResetPasswordScreen'
 import { Loader2 } from 'lucide-react'
 
 function AppContent() {
@@ -41,9 +43,14 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/reset-password" element={<ResetPasswordScreen />} />
+          <Route path="*" element={<AppContent />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 
