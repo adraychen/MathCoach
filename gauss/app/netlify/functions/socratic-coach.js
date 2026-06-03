@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
  * Netlify Function: Socratic Coach
  *
  * Supports stuck coaching and follow-up coaching.
+ * Uses gauss_coaching_plans when available for more targeted guidance.
  *
  * POST /.netlify/functions/socratic-coach
  *
@@ -19,6 +20,10 @@ import { createClient } from '@supabase/supabase-js';
  *     "conversation_history": []
  *   }
  */
+
+// ============================================
+// Base Coaching Rules (used when no plan exists)
+// ============================================
 
 const COACHING_RULES = `
 Rules:
@@ -335,6 +340,149 @@ function getFallbackFollowupMessage(studentMessage = '') {
   return 'Can you explain the step that led to your answer?';
 }
 
+// ============================================
+// Coaching Plan Functions
+// ============================================
+
+function buildCoachingPlanContext(plan) {
+  const parts = [];
+
+  if (plan.coaching_goal) {
+    parts.push(`Coaching goal: ${plan.coaching_goal}`);
+  }
+
+  if (plan.key_concepts && plan.key_concepts.length > 0) {
+    const concepts = Array.isArray(plan.key_concepts) ? plan.key_concepts.join(', ') : plan.key_concepts;
+    parts.push(`Key concepts the student should understand: ${concepts}`);
+  }
+
+  if (plan.expected_reasoning_steps && plan.expected_reasoning_steps.length > 0) {
+    const steps = Array.isArray(plan.expected_reasoning_steps)
+      ? plan.expected_reasoning_steps.map((s, i) => `${i + 1}. ${s}`).join('\n')
+      : plan.expected_reasoning_steps;
+    parts.push(`Expected reasoning steps (guide, do not force in order):\n${steps}`);
+  }
+
+  if (plan.common_misconceptions && plan.common_misconceptions.length > 0) {
+    const misconceptions = Array.isArray(plan.common_misconceptions)
+      ? plan.common_misconceptions.join('; ')
+      : plan.common_misconceptions;
+    parts.push(`Common misconceptions to watch for: ${misconceptions}`);
+  }
+
+  if (plan.adaptive_guidance_rules) {
+    parts.push(`Adaptive guidance rules:\n${plan.adaptive_guidance_rules}`);
+  }
+
+  return parts.join('\n\n');
+}
+
+async function getGroqStuckCoachingWithPlan(context, plan) {
+  const planContext = buildCoachingPlanContext(plan);
+
+  const prompt = `
+You are a Waterloo Gauss Grade 7 math coach.
+
+The student does not know how to start.
+
+${COACHING_RULES}
+
+Coaching plan context:
+${planContext}
+
+Question:
+${context.question_text || context.short_problem_summary || 'Question text not available'}
+
+Answer options:
+${context.options ? Object.entries(context.options).map(([k, v]) => `${k}: ${v}`).join('\n') : 'Not available'}
+
+Correct answer (private): ${context.correct_answer || 'Not available'}
+
+Official solution summary (private):
+${context.official_solution || 'Not available'}
+
+${plan.first_step_prompt ? `First step guidance: ${plan.first_step_prompt}` : ''}
+
+For the first stuck-coaching message:
+- Use the first step guidance if provided, but phrase it as a Grade 7-friendly question.
+- Help the student interpret the question wording.
+- Ask exactly one small guiding question.
+- Do not ask a two-part question.
+- Do not reveal the final answer or the correct answer letter.
+- Maximum 2 short sentences.
+`;
+
+  return callGroq([
+    {
+      role: 'system',
+      content: 'You are a Socratic Waterloo math tutor for Grade 7 students. Ask exactly one guiding question at a time.',
+    },
+    { role: 'user', content: prompt },
+  ]);
+}
+
+async function getGroqFollowupCoachingWithPlan(context, plan, studentMessage, conversationHistory) {
+  const planContext = buildCoachingPlanContext(plan);
+
+  const systemPrompt = `
+You are a Socratic Waterloo Gauss Grade 7 math coach.
+
+${COACHING_RULES}
+
+Coaching plan context:
+${planContext}
+
+Question:
+${context.question_text || context.short_problem_summary || 'Question text not available'}
+
+Answer options:
+${context.options ? Object.entries(context.options).map(([k, v]) => `${k}: ${v}`).join('\n') : 'Not available'}
+
+Correct answer (private): ${context.correct_answer || 'Not available'}
+
+Official solution summary (private):
+${context.official_solution || 'Not available'}
+
+Follow-up instructions:
+1. First, privately classify the student's latest response as one of:
+   - FINAL_CORRECT: Student gave the correct final answer or equivalent correct reasoning.
+   - PARTIAL_CORRECT: Student has part of the reasoning but is missing a piece.
+   - CONCEPT_CONFUSION: Student shows misunderstanding of a key concept.
+   - OFF_TRACK: Student's response does not follow the needed reasoning.
+   - ASKED_FOR_SOLUTION: Student explicitly asks to see the answer or full solution.
+
+2. Based on the classification:
+   - FINAL_CORRECT: Briefly confirm and summarize the key reasoning in one sentence. Do not ask another question.
+   - PARTIAL_CORRECT: Confirm the correct part briefly. Ask one narrow question about the missing piece.
+   - CONCEPT_CONFUSION: Give one short Grade 7-friendly clarification, then ask one small guiding question.
+   - OFF_TRACK: Gently redirect. Ask one clear next-step question.
+   - ASKED_FOR_SOLUTION: Do not show the full solution. Ask a smaller guiding question instead.
+
+3. Adaptive behavior:
+   - If the student says "I don't know," "not sure," or gives a vague answer, break the current step into a smaller step.
+   - Do not force the student through the expected reasoning steps in order if they need a smaller step.
+   - Example: If a step asks "What is 2 + 4 + 6?" and the student says "I don't know," ask "Start with the first two numbers. What is 2 + 4?"
+
+4. Rules:
+   - Maximum 2 short sentences.
+   - Ask only ONE guiding question.
+   - Never reveal the final answer unless the student has already reached it.
+   - Do not say only "Correct" or "Great" without either confirming the final reasoning or asking the next question.
+`;
+
+  const messages = [{ role: 'system', content: systemPrompt }];
+  messages.push(...normalizeMessages(conversationHistory));
+
+  if (studentMessage && studentMessage.trim()) {
+    messages.push({ role: 'user', content: studentMessage.trim() });
+  }
+
+  return callGroq(messages);
+}
+
+// ============================================
+// Main Handler
+// ============================================
 
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
@@ -489,6 +637,23 @@ export async function handler(event) {
     .eq('question_id', question.id)
     .single();
 
+  // Query coaching plan by source_question_id
+  const sourceQuestionId = sourceQuestion.id;
+  console.log(`[Coaching] Source question ID: ${sourceQuestionId}`);
+
+  const { data: coachingPlan, error: planError } = await supabase
+    .from('gauss_coaching_plans')
+    .select('first_step_prompt, coaching_goal, expected_reasoning_steps, key_concepts, common_misconceptions, adaptive_guidance_rules, is_reviewed')
+    .eq('source_question_id', sourceQuestionId)
+    .single();
+
+  const hasCoachingPlan = !planError && coachingPlan;
+  console.log(`[Coaching] Coaching plan found: ${hasCoachingPlan}`);
+
+  if (hasCoachingPlan && coachingPlan.is_reviewed !== undefined) {
+    console.log(`[Coaching] Plan is_reviewed: ${coachingPlan.is_reviewed}`);
+  }
+
   const context = {
     short_problem_summary: question.short_problem_summary,
     primary_topics: question.primary_topics,
@@ -507,16 +672,26 @@ export async function handler(event) {
     visual_description: sourceQuestion.visual_description,
   };
 
-
   let coachMessage;
 
   if (coaching_trigger === 'stuck') {
-    coachMessage = await getGroqStuckCoaching(context);
+    if (hasCoachingPlan) {
+      // Use coaching plan for stuck coaching
+      coachMessage = await getGroqStuckCoachingWithPlan(context, coachingPlan);
+    } else {
+      // Fall back to existing stuck coaching
+      coachMessage = await getGroqStuckCoaching(context);
+    }
     if (!coachMessage) coachMessage = getFallbackStuckMessage(context);
   } else {
-    // Follow-up messages are interpreted by the LLM so text answers such as
-    // "twelve", "the answer is 8", or equivalent reasoning can be recognized.
-    coachMessage = await getGroqFollowupCoaching(context, student_message, conversation_history);
+    // Follow-up coaching
+    if (hasCoachingPlan) {
+      // Use coaching plan for follow-up
+      coachMessage = await getGroqFollowupCoachingWithPlan(context, coachingPlan, student_message, conversation_history);
+    } else {
+      // Fall back to existing follow-up coaching
+      coachMessage = await getGroqFollowupCoaching(context, student_message, conversation_history);
+    }
     if (!coachMessage) coachMessage = getFallbackFollowupMessage(student_message);
   }
 
@@ -527,6 +702,7 @@ export async function handler(event) {
       available: true,
       coach_message: coachMessage,
       stage: coaching_trigger,
+      has_coaching_plan: hasCoachingPlan,
     }),
   };
 }

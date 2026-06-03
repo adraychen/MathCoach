@@ -31,7 +31,6 @@ interface QuestionRow {
 interface SolutionRow {
   id: string
   question_id: string
-  coaching_mode: string | null
   psg_solution_text: string | null
   psg_solution_summary: string | null
 }
@@ -138,7 +137,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
         const questionIds = qData.map(q => q.id)
         const { data: solutionsData, error: solutionsError } = await supabase
           .from('gauss_solutions')
-          .select('id, question_id, coaching_mode, psg_solution_text, psg_solution_summary')
+          .select('id, question_id, psg_solution_text, psg_solution_summary')
           .in('question_id', questionIds)
 
         if (solutionsError) {
@@ -187,11 +186,9 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
           solutionsMap.set(q.id, {
             id: sol?.id || '',
             question_id: q.id,
-            coaching_available: coachingAvailable,
-            coaching_mode: coachingAvailable ? 'socratic' : 'none',
-            coaching_source_id: sourceQuestion?.id || null,
             psg_solution_text: sol?.psg_solution_text || null,
             psg_solution_summary: sol?.psg_solution_summary || null,
+            coaching_available: coachingAvailable,
             source_question: sourceQuestion ? {
               id: sourceQuestion.id,
               question_text: sourceQuestion.question_text,

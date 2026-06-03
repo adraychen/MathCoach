@@ -36,7 +36,7 @@ Completed so far:
 - Students can log in and access the practice paper.
 - `profiles` and `student_teacher_assignments` tables are created for role-based access.
 - `gauss_source_questions` is used as the source-question / official-solution table.
-- `gauss_solutions` was cleaned so coaching uses `coaching_available`, `coaching_mode`, and `coaching_source_id` instead of duplicated hint/detail fields.
+- `gauss_solutions` was cleaned to only store PSG solution text. Coaching availability is determined dynamically from `gauss_source_questions`.
 - Stuck coaching is now implemented as interactive Socratic coaching using a Netlify Function.
 - Coaching panel supports chat-style student input and follow-up responses.
 - Socratic coaching does not show the full solution inside the coaching panel.
@@ -153,6 +153,22 @@ Coaching is not available for this question yet.
 ```
 
 This means adding new source questions automatically enables coaching - no need to manually update `gauss_solutions.coaching_available` or `coaching_source_id`.
+
+### Coaching Plans
+
+When a coaching plan exists in `gauss_coaching_plans` for the source question, the coach uses it to provide more targeted guidance:
+
+- `first_step_prompt` guides the initial stuck-coaching response
+- `expected_reasoning_steps` informs the coach about the solution path (not forced in order)
+- `key_concepts` and `common_misconceptions` help the coach recognize student errors
+- `adaptive_guidance_rules` provide question-specific coaching behavior
+
+The coaching plan is a guide, not a fixed hint sequence. The coach adapts to the student's responses:
+- If the student says "I don't know," break the current step into smaller steps
+- If the student shows concept confusion, clarify before continuing
+- If the student is partially correct, focus only on the missing piece
+
+Coaching plans are optional. Without a plan, the coach falls back to using the official solution and general coaching rules.
 
 ### Current Coaching Scope
 
@@ -308,8 +324,9 @@ waterloo_gauss_g7_2022_q11
 |---|---|
 | `gauss_practice_sets` | Practice set metadata, including set code and PDF filename |
 | `gauss_questions` | Practice-set question metadata, source mapping, topics, correct answer |
-| `gauss_solutions` | PSG solution plus coaching availability/link for each practice question |
-| `gauss_source_questions` | Source Waterloo/CEMC questions, official answers, official solutions, reasoning metadata |
+| `gauss_solutions` | PSG solution text for each practice question |
+| `gauss_source_questions` | Source Waterloo/CEMC questions, official solutions, reasoning metadata (coaching source of truth) |
+| `gauss_coaching_plans` | Adaptive coaching plans keyed by source_question_id (optional, enhances coaching) |
 
 ### Student progress
 
@@ -376,21 +393,21 @@ Deprecated for current MVP display method, but kept for possible future cropped-
 
 ### `gauss_solutions`
 
-Current cleaned fields:
+Current fields:
 
 - `id`
 - `question_id`
 - `psg_solution_text`
 - `psg_solution_summary`
 - `psg_solution_image_url`
-- `coaching_available`
-- `coaching_source_id`
-- `coaching_mode`
 - `created_at`
 - `updated_at`
 
-Removed/deprecated duplicate coaching fields:
+Removed fields (coaching now determined dynamically from `gauss_source_questions`):
 
+- `coaching_available`
+- `coaching_source_id`
+- `coaching_mode`
 - `hint_1`
 - `hint_2`
 - `guided_steps`
@@ -437,6 +454,24 @@ Current coaching uses:
 - `visual_description` when relevant
 
 Current coaching does **not** depend on blueprint because not all blueprints have been validated.
+
+### `gauss_coaching_plans`
+
+Adaptive coaching plan fields (optional, keyed by `source_question_id`):
+
+- `id`
+- `source_question_id` (references gauss_source_questions.id)
+- `first_step_prompt` (guidance for initial stuck coaching)
+- `coaching_goal` (what the student should understand)
+- `expected_reasoning_steps` (array of steps, used as guide not forced sequence)
+- `key_concepts` (array of concepts the student should understand)
+- `common_misconceptions` (array of mistakes to watch for)
+- `adaptive_guidance_rules` (text rules for adaptive behavior)
+- `is_reviewed` (boolean, prefer reviewed plans but not required)
+- `created_at`
+- `updated_at`
+
+The coaching plan enhances but does not replace the base coaching logic. If no plan exists for a source question, the coach falls back to using the official solution and existing prompt rules.
 
 ### `gauss_practice_sessions`
 
@@ -617,8 +652,11 @@ guass/
     ├── 002_seed_G7gauss1_metadata.sql
     ├── 004_create_gauss_practice_sessions.sql
     ├── 005_create_profiles_and_assignments.sql
+    ├── 006_create_topic_performance_views.sql
     ├── 008_enable_coaching_for_2016_2025_sources.sql
-    └── 009_clean_gauss_solutions_schema.sql
+    ├── 009_clean_gauss_solutions_schema.sql
+    ├── 010_drop_redundant_coaching_fields.sql
+    └── 011_create_gauss_coaching_plans.sql
 ```
 
 ## Data Import Workflow

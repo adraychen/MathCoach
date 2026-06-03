@@ -43,9 +43,6 @@ export interface Database {
           psg_solution_text: string | null
           psg_solution_summary: string | null
           psg_solution_image_url: string | null
-          coaching_available: boolean
-          coaching_mode: 'none' | 'static' | 'socratic'
-          coaching_source_id: string | null
           created_at: string
           updated_at: string
         }
@@ -180,12 +177,11 @@ export interface Question {
 export interface Solution {
   id: string
   question_id: string
-  coaching_available: boolean
-  coaching_mode: 'none' | 'static' | 'socratic'
-  coaching_source_id: string | null
   psg_solution_text: string | null
   psg_solution_summary: string | null
-  // Source question data (from gauss_source_questions via coaching_source_id)
+  // Coaching availability is computed dynamically from source_question existence
+  coaching_available: boolean
+  // Source question data (from gauss_source_questions via year/grade/question_number)
   source_question?: SourceQuestion | null
 }
 
