@@ -58,6 +58,109 @@ export interface Database {
           created_at: string
         }
       }
+      gauss_practice_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          practice_set_id: string
+          status: 'in_progress' | 'completed' | 'abandoned'
+          current_question_number: number
+          total_questions: number
+          correct_count: number
+          wrong_count: number
+          skipped_count: number
+          flagged_count: number
+          started_at: string
+          completed_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          practice_set_id: string
+          status?: 'in_progress' | 'completed' | 'abandoned'
+          current_question_number?: number
+          total_questions?: number
+          correct_count?: number
+          wrong_count?: number
+          skipped_count?: number
+          flagged_count?: number
+          started_at?: string
+          completed_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          practice_set_id?: string
+          status?: 'in_progress' | 'completed' | 'abandoned'
+          current_question_number?: number
+          total_questions?: number
+          correct_count?: number
+          wrong_count?: number
+          skipped_count?: number
+          flagged_count?: number
+          started_at?: string
+          completed_at?: string | null
+          updated_at?: string
+        }
+      }
+      gauss_attempts: {
+        Row: {
+          id: string
+          session_id: string | null
+          user_id: string | null
+          question_id: string
+          selected_answer: string | null
+          is_correct: boolean | null
+          status: 'unanswered' | 'correct' | 'wrong' | 'skipped' | 'flagged' | null
+          wrong_answers: string[] | null
+          flagged: boolean | null
+          skipped: boolean | null
+          time_spent_seconds: number | null
+          used_hint: boolean
+          used_guided_solution: boolean
+          viewed_psg_solution: boolean
+          viewed_detailed_solution: boolean
+          attempted_at: string
+        }
+        Insert: {
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+          question_id: string
+          selected_answer?: string | null
+          is_correct?: boolean | null
+          status?: 'unanswered' | 'correct' | 'wrong' | 'skipped' | 'flagged' | null
+          wrong_answers?: string[] | null
+          flagged?: boolean | null
+          skipped?: boolean | null
+          time_spent_seconds?: number | null
+          used_hint?: boolean
+          used_guided_solution?: boolean
+          viewed_psg_solution?: boolean
+          viewed_detailed_solution?: boolean
+          attempted_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+          question_id?: string
+          selected_answer?: string | null
+          is_correct?: boolean | null
+          status?: 'unanswered' | 'correct' | 'wrong' | 'skipped' | 'flagged' | null
+          wrong_answers?: string[] | null
+          flagged?: boolean | null
+          skipped?: boolean | null
+          time_spent_seconds?: number | null
+          used_hint?: boolean
+          used_guided_solution?: boolean
+          viewed_psg_solution?: boolean
+          viewed_detailed_solution?: boolean
+          attempted_at?: string
+        }
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
 import { PDFViewer } from './PDFViewer'
 import { AnswerCard } from './AnswerCard'
 import { CoachingPanel } from './CoachingPanel'
@@ -37,11 +38,33 @@ interface SolutionRow {
   common_mistake: string | null
 }
 
+interface SessionRow {
+  id: string
+  current_question_number: number
+  correct_count: number
+  wrong_count: number
+  skipped_count: number
+  flagged_count: number
+  status: string
+}
+
+interface AttemptRow {
+  id: string
+  question_id: string
+  selected_answer: string | null
+  is_correct: boolean | null
+  status: string | null
+  wrong_answers: string[] | null
+  flagged: boolean | null
+  skipped: boolean | null
+}
+
 interface PracticeScreenProps {
   setCode: string
 }
 
 export function PracticeScreen({ setCode }: PracticeScreenProps) {
+  const { user } = useAuth()
   const [questions, setQuestions] = useState<QuestionWithSolution[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [questionStates, setQuestionStates] = useState<Map<string, QuestionState>>(new Map())
@@ -52,9 +75,19 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   const [showSummary, setShowSummary] = useState(false)
   const [noFlaggedMessage, setNoFlaggedMessage] = useState(false)
 
-  // Fetch questions and solutions
+  // Session tracking
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [practiceSetId, setPracticeSetId] = useState<string | null>(null)
+
+  // Fetch questions, solutions, and session
   useEffect(() => {
     async function fetchData() {
+      if (!user?.id) {
+        setError('Please sign in to practice')
+        setLoading(false)
+        return
+      }
+
       setLoading(true)
       setError(null)
 
@@ -71,6 +104,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
         }
 
         const ps = practiceSet as PracticeSetRow
+        setPracticeSetId(ps.id)
 
         // Get questions
         const { data: questionsData, error: questionsError } = await supabase
@@ -134,6 +168,48 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
         setQuestions(questionsWithSolutions)
 
+        // Find or create session
+        const { data: existingSession, error: sessionError } = await (supabase
+          .from('gauss_practice_sessions') as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('practice_set_id', ps.id)
+          .eq('status', 'in_progress')
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        let currentSession: SessionRow
+
+        if (sessionError || !existingSession) {
+          // Create new session
+          const { data: newSession, error: createError } = await (supabase
+            .from('gauss_practice_sessions') as any)
+            .insert({
+              user_id: user.id,
+              practice_set_id: ps.id,
+              status: 'in_progress',
+              current_question_number: 1,
+              total_questions: qData.length,
+              correct_count: 0,
+              wrong_count: 0,
+              skipped_count: 0,
+              flagged_count: 0,
+            })
+            .select()
+            .single()
+
+          if (createError || !newSession) {
+            throw new Error('Failed to create practice session')
+          }
+
+          currentSession = newSession as SessionRow
+        } else {
+          currentSession = existingSession as SessionRow
+        }
+
+        setSessionId(currentSession.id)
+
         // Initialize question states
         const initialStates = new Map<string, QuestionState>()
         questionsWithSolutions.forEach((q) => {
@@ -145,11 +221,39 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
             flagged: false,
           })
         })
+
+        // Load existing attempts for this session
+        const { data: attemptsData, error: attemptsError } = await (supabase
+          .from('gauss_attempts') as any)
+          .select('*')
+          .eq('session_id', currentSession.id)
+
+        if (!attemptsError && attemptsData) {
+          const attempts = attemptsData as AttemptRow[]
+          attempts.forEach((attempt) => {
+            const question = questionsWithSolutions.find(q => q.id === attempt.question_id)
+            if (question) {
+              initialStates.set(attempt.question_id, {
+                practice_question_number: question.practice_question_number,
+                selected_answer: attempt.selected_answer as AnswerChoice | null,
+                status: (attempt.status as QuestionState['status']) || 'unanswered',
+                wrong_answers: (attempt.wrong_answers || []) as AnswerChoice[],
+                flagged: attempt.flagged || false,
+              })
+            }
+          })
+        }
+
         setQuestionStates(initialStates)
 
-        // Set initial PDF page
-        if (questionsWithSolutions[0]?.question_pdf_page) {
-          setPdfPage(questionsWithSolutions[0].question_pdf_page)
+        // Restore current question from session
+        const restoredIndex = Math.max(0, currentSession.current_question_number - 1)
+        setCurrentQuestionIndex(restoredIndex)
+
+        // Set PDF page
+        const currentQ = questionsWithSolutions[restoredIndex]
+        if (currentQ?.question_pdf_page) {
+          setPdfPage(currentQ.question_pdf_page)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
@@ -159,7 +263,77 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     }
 
     fetchData()
-  }, [setCode])
+  }, [setCode, user?.id])
+
+  // Save attempt to database
+  const saveAttempt = useCallback(async (
+    questionId: string,
+    state: QuestionState
+  ) => {
+    if (!sessionId || !user?.id) return
+
+    // Check if attempt already exists
+    const { data: existing } = await (supabase
+      .from('gauss_attempts') as any)
+      .select('id')
+      .eq('session_id', sessionId)
+      .eq('question_id', questionId)
+      .single()
+
+    if (existing) {
+      // Update existing attempt
+      await (supabase
+        .from('gauss_attempts') as any)
+        .update({
+          selected_answer: state.selected_answer,
+          is_correct: state.status === 'correct',
+          status: state.status,
+          wrong_answers: state.wrong_answers,
+          flagged: state.flagged,
+          skipped: state.status === 'skipped',
+          attempted_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+    } else {
+      // Insert new attempt
+      await (supabase
+        .from('gauss_attempts') as any)
+        .insert({
+          session_id: sessionId,
+          user_id: user.id,
+          question_id: questionId,
+          selected_answer: state.selected_answer,
+          is_correct: state.status === 'correct',
+          status: state.status,
+          wrong_answers: state.wrong_answers,
+          flagged: state.flagged,
+          skipped: state.status === 'skipped',
+          attempted_at: new Date().toISOString(),
+        })
+    }
+  }, [sessionId, user?.id])
+
+  // Update session in database
+  const updateSession = useCallback(async (updates: Record<string, unknown>) => {
+    if (!sessionId) return
+
+    await (supabase
+      .from('gauss_practice_sessions') as any)
+      .update(updates)
+      .eq('id', sessionId)
+  }, [sessionId])
+
+  // Update session counts
+  const updateSessionCounts = useCallback(async (states: Map<string, QuestionState>) => {
+    const statesArray = Array.from(states.values())
+    const counts = {
+      correct_count: statesArray.filter(s => s.status === 'correct').length,
+      wrong_count: statesArray.filter(s => s.status === 'wrong').length,
+      skipped_count: statesArray.filter(s => s.status === 'skipped').length,
+      flagged_count: statesArray.filter(s => s.flagged).length,
+    }
+    await updateSession(counts)
+  }, [updateSession])
 
   // Calculate progress
   const progress = useMemo((): PracticeProgress => {
@@ -185,7 +359,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
       }
     : null
 
-  const goToQuestion = useCallback((index: number) => {
+  const goToQuestion = useCallback(async (index: number) => {
     if (index >= 0 && index < questions.length) {
       setCurrentQuestionIndex(index)
       setCoachingOpen(false)
@@ -195,95 +369,137 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
       if (question?.question_pdf_page) {
         setPdfPage(question.question_pdf_page)
       }
-    }
-  }, [questions])
 
-  const goToNextQuestion = useCallback(() => {
+      // Update session current_question_number
+      await updateSession({ current_question_number: index + 1 })
+    }
+  }, [questions, updateSession])
+
+  const goToNextQuestion = useCallback(async () => {
     if (currentQuestionIndex < questions.length - 1) {
-      goToQuestion(currentQuestionIndex + 1)
+      await goToQuestion(currentQuestionIndex + 1)
     } else {
       // Reached the end - show summary
       setShowSummary(true)
-    }
-  }, [currentQuestionIndex, questions.length, goToQuestion])
 
-  const goToPreviousQuestion = useCallback(() => {
+      // Check if all questions are answered
+      const states = Array.from(questionStates.values())
+      const allAnswered = states.every(s =>
+        s.status === 'correct' || s.status === 'wrong' || s.status === 'skipped'
+      )
+
+      if (allAnswered) {
+        await updateSession({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        })
+      }
+    }
+  }, [currentQuestionIndex, questions.length, goToQuestion, questionStates, updateSession])
+
+  const goToPreviousQuestion = useCallback(async () => {
     if (currentQuestionIndex > 0) {
-      goToQuestion(currentQuestionIndex - 1)
+      await goToQuestion(currentQuestionIndex - 1)
     }
   }, [currentQuestionIndex, goToQuestion])
 
-  const handleSelectAnswer = useCallback((answer: AnswerChoice) => {
+  const handleSelectAnswer = useCallback(async (answer: AnswerChoice) => {
     if (!currentQuestion) return
 
     const isCorrect = answer === currentQuestion.correct_answer
+
+    let newState: QuestionState
 
     setQuestionStates((prev) => {
       const newStates = new Map(prev)
       const prevState = prev.get(currentQuestion.id)!
 
       if (isCorrect) {
-        newStates.set(currentQuestion.id, {
+        newState = {
           ...prevState,
           selected_answer: answer,
           status: 'correct',
-        })
+        }
       } else {
-        newStates.set(currentQuestion.id, {
+        newState = {
           ...prevState,
           selected_answer: answer,
           status: 'wrong',
           wrong_answers: [...prevState.wrong_answers, answer],
-        })
+        }
       }
+
+      newStates.set(currentQuestion.id, newState)
+
+      // Update session counts
+      updateSessionCounts(newStates)
+
       return newStates
     })
 
+    // Save attempt to database
+    const prevState = questionStates.get(currentQuestion.id)!
+    const attemptState: QuestionState = isCorrect
+      ? { ...prevState, selected_answer: answer, status: 'correct' }
+      : { ...prevState, selected_answer: answer, status: 'wrong', wrong_answers: [...prevState.wrong_answers, answer] }
+
+    await saveAttempt(currentQuestion.id, attemptState)
+
     if (isCorrect) {
       // Auto-advance after a short delay
-      setTimeout(goToNextQuestion, 600)
+      setTimeout(() => goToNextQuestion(), 600)
     } else {
       // Open coaching panel on wrong answer
       setCoachingOpen(true)
     }
-  }, [currentQuestion, goToNextQuestion])
+  }, [currentQuestion, questionStates, saveAttempt, updateSessionCounts, goToNextQuestion])
 
-  const handleSkip = useCallback(() => {
+  const handleSkip = useCallback(async () => {
     if (!currentQuestion) return
+
+    const prevState = questionStates.get(currentQuestion.id)!
+    const newState: QuestionState = {
+      ...prevState,
+      status: 'skipped',
+    }
 
     setQuestionStates((prev) => {
       const newStates = new Map(prev)
-      const prevState = prev.get(currentQuestion.id)!
-      newStates.set(currentQuestion.id, {
-        ...prevState,
-        status: 'skipped',
-      })
+      newStates.set(currentQuestion.id, newState)
+      updateSessionCounts(newStates)
       return newStates
     })
 
-    goToNextQuestion()
-  }, [currentQuestion, goToNextQuestion])
+    await saveAttempt(currentQuestion.id, newState)
+    await goToNextQuestion()
+  }, [currentQuestion, questionStates, saveAttempt, updateSessionCounts, goToNextQuestion])
 
-  const handleFlag = useCallback(() => {
+  const handleFlag = useCallback(async () => {
     if (!currentQuestion) return
 
     const currentFlagged = questionStates.get(currentQuestion.id)?.flagged || false
+    const prevState = questionStates.get(currentQuestion.id)!
+
+    const newState: QuestionState = {
+      ...prevState,
+      flagged: !currentFlagged,
+      status: !currentFlagged ? 'flagged' : prevState.status === 'flagged' ? 'unanswered' : prevState.status,
+    }
 
     setQuestionStates((prev) => {
       const newStates = new Map(prev)
-      const prevState = prev.get(currentQuestion.id)!
-      newStates.set(currentQuestion.id, {
-        ...prevState,
-        flagged: !currentFlagged,
-      })
+      newStates.set(currentQuestion.id, newState)
+      updateSessionCounts(newStates)
       return newStates
     })
 
+    await saveAttempt(currentQuestion.id, newState)
+
     // Only auto-advance if flagging (not unflagging)
     if (!currentFlagged) {
-      goToNextQuestion()
+      await goToNextQuestion()
     }
-  }, [currentQuestion, questionStates, goToNextQuestion])
+  }, [currentQuestion, questionStates, saveAttempt, updateSessionCounts, goToNextQuestion])
 
   const handleReviewFlagged = useCallback(() => {
     // Find first flagged question
@@ -311,7 +527,38 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     }
   }, [questions, questionStates, goToQuestion])
 
-  const handleRestart = useCallback(() => {
+  const handleRestart = useCallback(async () => {
+    if (!user?.id || !practiceSetId) return
+
+    // Mark current session as abandoned
+    if (sessionId) {
+      await updateSession({ status: 'abandoned' })
+    }
+
+    // Create new session
+    const { data: newSession, error: createError } = await (supabase
+      .from('gauss_practice_sessions') as any)
+      .insert({
+        user_id: user.id,
+        practice_set_id: practiceSetId,
+        status: 'in_progress',
+        current_question_number: 1,
+        total_questions: questions.length,
+        correct_count: 0,
+        wrong_count: 0,
+        skipped_count: 0,
+        flagged_count: 0,
+      })
+      .select()
+      .single()
+
+    if (createError || !newSession) {
+      console.error('Failed to create new session:', createError)
+      return
+    }
+
+    setSessionId((newSession as SessionRow).id)
+
     // Reset all question states
     const resetStates = new Map<string, QuestionState>()
     questions.forEach((q) => {
@@ -331,7 +578,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     if (questions[0]?.question_pdf_page) {
       setPdfPage(questions[0].question_pdf_page)
     }
-  }, [questions])
+  }, [user?.id, practiceSetId, sessionId, questions, updateSession])
 
   const handlePdfPageChange = (page: number) => {
     setPdfPage(page)
