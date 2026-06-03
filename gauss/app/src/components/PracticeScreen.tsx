@@ -183,6 +183,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
         if (sessionError || !existingSession) {
           // Create new session
+          console.log('Creating new practice session for user:', user.id)
           const { data: newSession, error: createError } = await (supabase
             .from('gauss_practice_sessions') as any)
             .insert({
@@ -199,12 +200,19 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
             .select()
             .single()
 
-          if (createError || !newSession) {
-            throw new Error('Failed to create practice session')
+          if (createError) {
+            console.error('Session creation error:', createError)
+            throw new Error(`Failed to create practice session: ${createError.message}`)
           }
 
+          if (!newSession) {
+            throw new Error('Failed to create practice session: No data returned')
+          }
+
+          console.log('Session created:', newSession.id)
           currentSession = newSession as SessionRow
         } else {
+          console.log('Resuming existing session:', existingSession.id)
           currentSession = existingSession as SessionRow
         }
 
@@ -270,19 +278,26 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     questionId: string,
     state: QuestionState
   ) => {
-    if (!sessionId || !user?.id) return
+    if (!sessionId || !user?.id) {
+      console.warn('Cannot save attempt: missing sessionId or user')
+      return
+    }
 
     // Check if attempt already exists
-    const { data: existing } = await (supabase
+    const { data: existing, error: fetchError } = await (supabase
       .from('gauss_attempts') as any)
       .select('id')
       .eq('session_id', sessionId)
       .eq('question_id', questionId)
       .single()
 
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('Error checking existing attempt:', fetchError)
+    }
+
     if (existing) {
       // Update existing attempt
-      await (supabase
+      const { error: updateError } = await (supabase
         .from('gauss_attempts') as any)
         .update({
           selected_answer: state.selected_answer,
@@ -294,9 +309,15 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
           attempted_at: new Date().toISOString(),
         })
         .eq('id', existing.id)
+
+      if (updateError) {
+        console.error('Error updating attempt:', updateError)
+      } else {
+        console.log('Attempt updated for question:', questionId)
+      }
     } else {
       // Insert new attempt
-      await (supabase
+      const { error: insertError } = await (supabase
         .from('gauss_attempts') as any)
         .insert({
           session_id: sessionId,
@@ -310,6 +331,12 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
           skipped: state.status === 'skipped',
           attempted_at: new Date().toISOString(),
         })
+
+      if (insertError) {
+        console.error('Error inserting attempt:', insertError)
+      } else {
+        console.log('Attempt saved for question:', questionId)
+      }
     }
   }, [sessionId, user?.id])
 
