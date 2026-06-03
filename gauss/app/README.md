@@ -131,29 +131,28 @@ Wrong answers must not reveal the correct answer.
 
 ## Coaching Design
 
-The app identifies coaching availability from:
+Coaching availability is determined dynamically by checking if a matching source question exists in `gauss_source_questions` with an `official_solution`.
+
+The matching logic uses the practice question's source mapping:
 
 ```text
-gauss_solutions.coaching_available
+gauss_questions.source_year = gauss_source_questions.year
+gauss_questions.source_grade = gauss_source_questions.grade
+gauss_questions.source_question_number = gauss_source_questions.question_number
 ```
 
-The relationship is:
+Coaching is available when:
+1. The practice question has `source_year`, `source_grade`, and `source_question_number` set
+2. A matching record exists in `gauss_source_questions`
+3. That source question has `official_solution` (not null)
 
-```text
-gauss_questions.id → gauss_solutions.question_id
-```
-
-For interactive coaching, the app uses:
-
-```text
-gauss_solutions.coaching_source_id → gauss_source_questions.id
-```
-
-If `coaching_available = false`, `coaching_mode = 'none'`, or `coaching_source_id` is null, show:
+If any of these conditions fail, show:
 
 ```text
 Coaching is not available for this question yet.
 ```
+
+This means adding new source questions automatically enables coaching - no need to manually update `gauss_solutions.coaching_available` or `coaching_source_id`.
 
 ### Current Coaching Scope
 

@@ -443,7 +443,7 @@ export async function handler(event) {
 
   const { data: question, error: qError } = await supabase
     .from('gauss_questions')
-    .select('id, short_problem_summary, primary_topics, secondary_topics, difficulty_band, correct_answer')
+    .select('id, short_problem_summary, primary_topics, secondary_topics, difficulty_band, correct_answer, source_year, source_grade, source_question_number')
     .eq('practice_set_id', practiceSet.id)
     .eq('practice_question_number', practice_question_number)
     .single();
@@ -456,21 +456,9 @@ export async function handler(event) {
     };
   }
 
-  const { data: solution, error: solError } = await supabase
-    .from('gauss_solutions')
-    .select('coaching_available, coaching_mode, coaching_source_id, psg_solution_text, psg_solution_summary')
-    .eq('question_id', question.id)
-    .single();
-
-  if (solError || !solution) {
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ available: false, message: 'Coaching is not available for this question yet.' }),
-    };
-  }
-
-  if (!solution.coaching_available || solution.coaching_mode === 'none' || !solution.coaching_source_id) {
+  // Check if source question exists with official solution
+  // Coaching is available if gauss_source_questions has a matching record with official_solution
+  if (!question.source_year || !question.source_grade || !question.source_question_number) {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -480,11 +468,13 @@ export async function handler(event) {
 
   const { data: sourceQuestion, error: srcError } = await supabase
     .from('gauss_source_questions')
-    .select('question_text, options, correct_answer, official_solution, reasoning_summary, solution_pattern, archetype, visual_required, visual_description')
-    .eq('id', solution.coaching_source_id)
+    .select('id, question_text, options, correct_answer, official_solution, reasoning_summary, solution_pattern, archetype, visual_required, visual_description')
+    .eq('year', question.source_year)
+    .eq('grade', question.source_grade)
+    .eq('question_number', question.source_question_number)
     .single();
 
-  if (srcError || !sourceQuestion) {
+  if (srcError || !sourceQuestion || !sourceQuestion.official_solution) {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -492,14 +482,21 @@ export async function handler(event) {
     };
   }
 
+  // Get solution for PSG text (optional, not required for coaching)
+  const { data: solution } = await supabase
+    .from('gauss_solutions')
+    .select('psg_solution_text, psg_solution_summary')
+    .eq('question_id', question.id)
+    .single();
+
   const context = {
     short_problem_summary: question.short_problem_summary,
     primary_topics: question.primary_topics,
     secondary_topics: question.secondary_topics,
     difficulty_band: question.difficulty_band,
     correct_answer: question.correct_answer || sourceQuestion.correct_answer,
-    psg_solution_text: solution.psg_solution_text,
-    psg_solution_summary: solution.psg_solution_summary,
+    psg_solution_text: solution?.psg_solution_text || null,
+    psg_solution_summary: solution?.psg_solution_summary || null,
     question_text: sourceQuestion.question_text,
     options: sourceQuestion.options,
     official_solution: sourceQuestion.official_solution,

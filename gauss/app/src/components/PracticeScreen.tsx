@@ -23,14 +23,15 @@ interface QuestionRow {
   crop_y: number | null
   crop_width: number | null
   crop_height: number | null
+  source_year: number | null
+  source_grade: number | null
+  source_question_number: number | null
 }
 
 interface SolutionRow {
   id: string
   question_id: string
-  coaching_available: boolean
   coaching_mode: string | null
-  coaching_source_id: string | null
   psg_solution_text: string | null
   psg_solution_summary: string | null
 }
@@ -137,7 +138,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
         const questionIds = qData.map(q => q.id)
         const { data: solutionsData, error: solutionsError } = await supabase
           .from('gauss_solutions')
-          .select('id, question_id, coaching_available, coaching_mode, coaching_source_id, psg_solution_text, psg_solution_summary')
+          .select('id, question_id, coaching_mode, psg_solution_text, psg_solution_summary')
           .in('question_id', questionIds)
 
         if (solutionsError) {
@@ -146,43 +147,51 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
         const solData = (solutionsData || []) as SolutionRow[]
 
-        // Get coaching source IDs that exist
-        const coachingSourceIds = solData
-          .map(sol => sol.coaching_source_id)
-          .filter((id): id is string => id !== null)
+        // Build source question lookup keys from questions that have source mapping
+        const sourceKeys = qData
+          .filter(q => q.source_year && q.source_grade && q.source_question_number)
+          .map(q => ({ year: q.source_year!, grade: q.source_grade!, question_number: q.source_question_number! }))
 
-        // Fetch source questions for coaching
-        let sourceQuestionsMap = new Map<string, SourceQuestionRow>()
-        if (coachingSourceIds.length > 0) {
+        // Fetch source questions by year/grade/question_number
+        // Coaching is available if source question exists AND has official_solution
+        const sourceQuestionsMap = new Map<string, SourceQuestionRow>()
+        if (sourceKeys.length > 0) {
+          // Query source questions - we need to check each combination
           const { data: sourceData, error: sourceError } = await (supabase
             .from('gauss_source_questions') as any)
-            .select('id, question_text, options, official_solution, reasoning_summary, solution_pattern, archetype, blueprint_code, visual_required, visual_description')
-            .in('id', coachingSourceIds)
+            .select('id, year, grade, question_number, question_text, options, official_solution, reasoning_summary, solution_pattern, archetype, blueprint_code, visual_required, visual_description')
 
           if (sourceError) {
             console.warn('Error fetching source questions:', sourceError)
           } else if (sourceData) {
-            (sourceData as SourceQuestionRow[]).forEach(src => {
-              sourceQuestionsMap.set(src.id, src)
+            (sourceData as (SourceQuestionRow & { year: number; grade: number; question_number: number })[]).forEach(src => {
+              // Key by year-grade-question_number for lookup
+              const key = `${src.year}-${src.grade}-${src.question_number}`
+              sourceQuestionsMap.set(key, src)
             })
           }
         }
 
-        // Map solutions to questions
+        // Map solutions to questions, determining coaching_available from source questions
         const solutionsMap = new Map<string, Solution>()
-        solData.forEach((sol) => {
-          const sourceQuestion = sol.coaching_source_id
-            ? sourceQuestionsMap.get(sol.coaching_source_id) || null
+        qData.forEach((q) => {
+          const sol = solData.find(s => s.question_id === q.id)
+          const sourceKey = q.source_year && q.source_grade && q.source_question_number
+            ? `${q.source_year}-${q.source_grade}-${q.source_question_number}`
             : null
+          const sourceQuestion = sourceKey ? sourceQuestionsMap.get(sourceKey) : null
 
-          solutionsMap.set(sol.question_id, {
-            id: sol.id,
-            question_id: sol.question_id,
-            coaching_available: sol.coaching_available,
-            coaching_mode: (sol.coaching_mode as Solution['coaching_mode']) || 'none',
-            coaching_source_id: sol.coaching_source_id,
-            psg_solution_text: sol.psg_solution_text,
-            psg_solution_summary: sol.psg_solution_summary,
+          // Coaching is available if source question exists AND has official_solution
+          const coachingAvailable = !!(sourceQuestion && sourceQuestion.official_solution)
+
+          solutionsMap.set(q.id, {
+            id: sol?.id || '',
+            question_id: q.id,
+            coaching_available: coachingAvailable,
+            coaching_mode: coachingAvailable ? 'socratic' : 'none',
+            coaching_source_id: sourceQuestion?.id || null,
+            psg_solution_text: sol?.psg_solution_text || null,
+            psg_solution_summary: sol?.psg_solution_summary || null,
             source_question: sourceQuestion ? {
               id: sourceQuestion.id,
               question_text: sourceQuestion.question_text,
