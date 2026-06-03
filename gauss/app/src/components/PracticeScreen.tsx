@@ -342,12 +342,22 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
   // Update session in database
   const updateSession = useCallback(async (updates: Record<string, unknown>) => {
-    if (!sessionId) return
+    if (!sessionId) {
+      console.warn('Cannot update session: no sessionId')
+      return
+    }
 
-    await (supabase
+    console.log('Updating session:', sessionId, updates)
+    const { error } = await (supabase
       .from('gauss_practice_sessions') as any)
       .update(updates)
       .eq('id', sessionId)
+
+    if (error) {
+      console.error('Session update error:', error)
+    } else {
+      console.log('Session updated successfully')
+    }
   }, [sessionId])
 
   // Update session counts
@@ -409,13 +419,14 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
       // Reached the end - show summary
       setShowSummary(true)
 
-      // Check if all questions are answered
+      // Check if all questions have been dealt with (answered, skipped, or flagged)
       const states = Array.from(questionStates.values())
-      const allAnswered = states.every(s =>
-        s.status === 'correct' || s.status === 'wrong' || s.status === 'skipped'
+      const allDealtWith = states.every(s =>
+        s.status === 'correct' || s.status === 'wrong' || s.status === 'skipped' || s.status === 'flagged'
       )
 
-      if (allAnswered) {
+      if (allDealtWith) {
+        console.log('All questions dealt with, marking session as completed')
         await updateSession({
           status: 'completed',
           completed_at: new Date().toISOString(),
