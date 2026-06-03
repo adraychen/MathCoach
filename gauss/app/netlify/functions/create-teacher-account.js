@@ -162,6 +162,10 @@ export async function handler(event) {
     };
   }
 
+  // Get the origin for redirect URL
+  const origin = event.headers.origin || event.headers.Origin || process.env.SITE_URL || '';
+  const redirectTo = origin ? `${origin}/reset-password` : undefined;
+
   // Invite user by email - they will receive an email to set their password
   const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(
     trimmedEmail,
@@ -170,6 +174,7 @@ export async function handler(event) {
         role: 'teacher',
         display_name: trimmedDisplayName,
       },
+      redirectTo,
     }
   );
 
