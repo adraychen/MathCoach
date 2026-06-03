@@ -29,13 +29,23 @@ interface SolutionRow {
   id: string
   question_id: string
   coaching_available: boolean
-  hint_1: string | null
-  hint_2: string | null
-  guided_steps: unknown
-  detailed_solution_text: string | null
+  coaching_mode: string | null
+  coaching_source_id: string | null
   psg_solution_text: string | null
-  key_strategy: string | null
-  common_mistake: string | null
+  psg_solution_summary: string | null
+}
+
+interface SourceQuestionRow {
+  id: string
+  question_text: string | null
+  options: Record<string, string> | null
+  official_solution: string | null
+  reasoning_summary: string | null
+  solution_pattern: string | null
+  archetype: string | null
+  blueprint_code: string | null
+  visual_required: boolean | null
+  visual_description: string | null
 }
 
 interface SessionRow {
@@ -127,7 +137,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
         const questionIds = qData.map(q => q.id)
         const { data: solutionsData, error: solutionsError } = await supabase
           .from('gauss_solutions')
-          .select('*')
+          .select('id, question_id, coaching_available, coaching_mode, coaching_source_id, psg_solution_text, psg_solution_summary')
           .in('question_id', questionIds)
 
         if (solutionsError) {
@@ -136,20 +146,55 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
         const solData = (solutionsData || []) as SolutionRow[]
 
+        // Get coaching source IDs that exist
+        const coachingSourceIds = solData
+          .map(sol => sol.coaching_source_id)
+          .filter((id): id is string => id !== null)
+
+        // Fetch source questions for coaching
+        let sourceQuestionsMap = new Map<string, SourceQuestionRow>()
+        if (coachingSourceIds.length > 0) {
+          const { data: sourceData, error: sourceError } = await (supabase
+            .from('gauss_source_questions') as any)
+            .select('id, question_text, options, official_solution, reasoning_summary, solution_pattern, archetype, blueprint_code, visual_required, visual_description')
+            .in('id', coachingSourceIds)
+
+          if (sourceError) {
+            console.warn('Error fetching source questions:', sourceError)
+          } else if (sourceData) {
+            (sourceData as SourceQuestionRow[]).forEach(src => {
+              sourceQuestionsMap.set(src.id, src)
+            })
+          }
+        }
+
         // Map solutions to questions
         const solutionsMap = new Map<string, Solution>()
         solData.forEach((sol) => {
+          const sourceQuestion = sol.coaching_source_id
+            ? sourceQuestionsMap.get(sol.coaching_source_id) || null
+            : null
+
           solutionsMap.set(sol.question_id, {
             id: sol.id,
             question_id: sol.question_id,
             coaching_available: sol.coaching_available,
-            hint_1: sol.hint_1,
-            hint_2: sol.hint_2,
-            guided_steps: sol.guided_steps as Solution['guided_steps'],
-            detailed_solution_text: sol.detailed_solution_text,
+            coaching_mode: (sol.coaching_mode as Solution['coaching_mode']) || 'none',
+            coaching_source_id: sol.coaching_source_id,
             psg_solution_text: sol.psg_solution_text,
-            key_strategy: sol.key_strategy,
-            common_mistake: sol.common_mistake,
+            psg_solution_summary: sol.psg_solution_summary,
+            source_question: sourceQuestion ? {
+              id: sourceQuestion.id,
+              question_text: sourceQuestion.question_text,
+              options: sourceQuestion.options,
+              official_solution: sourceQuestion.official_solution,
+              reasoning_summary: sourceQuestion.reasoning_summary,
+              solution_pattern: sourceQuestion.solution_pattern,
+              archetype: sourceQuestion.archetype,
+              blueprint_code: sourceQuestion.blueprint_code,
+              visual_required: sourceQuestion.visual_required,
+              visual_description: sourceQuestion.visual_description,
+            } : null,
           })
         })
 

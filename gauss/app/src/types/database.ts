@@ -43,19 +43,11 @@ export interface Database {
           psg_solution_text: string | null
           psg_solution_summary: string | null
           psg_solution_image_url: string | null
-          detailed_solution_text: string | null
-          detailed_solution_image_url: string | null
-          detailed_solution_source_pdf: string | null
-          detailed_solution_page: number | null
-          detailed_solution_status: string
           coaching_available: boolean
-          key_strategy: string | null
-          hint_1: string | null
-          hint_2: string | null
-          guided_steps: GuidedStep[] | null
-          common_mistake: string | null
-          reflection_question: string | null
+          coaching_mode: 'none' | 'static' | 'socratic'
+          coaching_source_id: string | null
           created_at: string
+          updated_at: string
         }
       }
       gauss_practice_sessions: {
@@ -165,11 +157,6 @@ export interface Database {
   }
 }
 
-export interface GuidedStep {
-  step: number
-  text: string
-}
-
 export interface PracticeSet {
   id: string
   set_code: string
@@ -194,13 +181,25 @@ export interface Solution {
   id: string
   question_id: string
   coaching_available: boolean
-  hint_1: string | null
-  hint_2: string | null
-  guided_steps: GuidedStep[] | null
-  detailed_solution_text: string | null
+  coaching_mode: 'none' | 'static' | 'socratic'
+  coaching_source_id: string | null
   psg_solution_text: string | null
-  key_strategy: string | null
-  common_mistake: string | null
+  psg_solution_summary: string | null
+  // Source question data (from gauss_source_questions via coaching_source_id)
+  source_question?: SourceQuestion | null
+}
+
+export interface SourceQuestion {
+  id: string
+  question_text: string | null
+  options: Record<string, string> | null
+  official_solution: string | null
+  reasoning_summary: string | null
+  solution_pattern: string | null
+  archetype: string | null
+  blueprint_code: string | null
+  visual_required: boolean | null
+  visual_description: string | null
 }
 
 export interface QuestionWithSolution extends Question {
