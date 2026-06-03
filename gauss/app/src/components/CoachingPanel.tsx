@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Lightbulb, BookOpen, Eye, Loader2, Send } from 'lucide-react'
+import { Lightbulb, Loader2, Send } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Solution } from '../types/database'
 
@@ -34,13 +34,11 @@ export function CoachingPanel({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [showFullSolution, setShowFullSolution] = useState(false)
   const [hasFetched, setHasFetched] = useState(false)
   const [studentInput, setStudentInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const coachingAvailable = solution?.coaching_available ?? false
-  const sourceQuestion = solution?.source_question
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -50,7 +48,6 @@ export function CoachingPanel({
   // Reset state when question changes
   useEffect(() => {
     setMessages([])
-    setShowFullSolution(false)
     setError(null)
     setHasFetched(false)
     setStudentInput('')
@@ -147,7 +144,6 @@ export function CoachingPanel({
 
   const resetCoaching = () => {
     setMessages([])
-    setShowFullSolution(false)
     setError(null)
     setHasFetched(false)
     setStudentInput('')
@@ -167,39 +163,6 @@ export function CoachingPanel({
             className="text-sm text-blue-600 hover:text-blue-800"
           >
             Try again
-          </button>
-        </div>
-      )
-    }
-
-    // Show full solution view
-    if (showFullSolution) {
-      return (
-        <div className="space-y-4">
-          {sourceQuestion?.official_solution && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-              <p className="text-gray-800 text-sm font-medium mb-2">Official Solution:</p>
-              <p className="text-gray-700 text-sm whitespace-pre-wrap">
-                {sourceQuestion.official_solution}
-              </p>
-            </div>
-          )}
-          {solution?.psg_solution_text && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen size={14} className="text-amber-600" />
-                <p className="text-amber-800 text-sm font-medium">PSG Solution:</p>
-              </div>
-              <p className="text-amber-700 text-sm whitespace-pre-wrap">
-                {solution.psg_solution_text}
-              </p>
-            </div>
-          )}
-          <button
-            onClick={resetCoaching}
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
-            Start over
           </button>
         </div>
       )
@@ -248,7 +211,7 @@ export function CoachingPanel({
 
         {/* Input area */}
         {messages.length > 0 && (
-          <div className="border-t border-gray-200 pt-3 space-y-2">
+          <div className="border-t border-gray-200 pt-3">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -267,14 +230,6 @@ export function CoachingPanel({
                 <Send size={16} />
               </button>
             </div>
-
-            <button
-              onClick={() => setShowFullSolution(true)}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-            >
-              <Eye size={14} />
-              Show full solution
-            </button>
           </div>
         )}
 
@@ -299,18 +254,15 @@ export function CoachingPanel({
             resetCoaching()
           }
         }}
-        className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-colors ${
+        className={`w-full flex items-center justify-center px-4 py-3 rounded-lg transition-colors ${
           isOpen
-            ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+            ? 'bg-yellow-100 hover:bg-yellow-200'
+            : 'bg-gray-50 hover:bg-gray-100'
         }`}
         aria-label="Start coaching"
-        title="I'm stuck - help me start"
+        title="Get help"
       >
         <Lightbulb size={20} className={isOpen ? 'text-yellow-600' : 'text-gray-500'} />
-        <span className="text-sm font-medium">
-          {isOpen ? 'Coaching' : "I'm stuck"}
-        </span>
       </button>
 
       {/* Coaching Content */}
