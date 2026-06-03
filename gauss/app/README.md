@@ -326,7 +326,30 @@ waterloo_gauss_g7_2022_q11
 | `profiles` | Role, display name, login type, active status, approval status |
 | `student_teacher_assignments` | Active student-to-teacher assignment |
 
+### Database views
+
+| View | Purpose |
+|---|---|
+| `gauss_student_primary_topic_performance` | Aggregated student performance by primary topic (unnested from topic arrays) |
+| `gauss_student_secondary_topic_performance` | Aggregated student performance by secondary topic (unnested from topic arrays) |
+
+These views join `gauss_practice_sessions` → `gauss_attempts` → `gauss_questions` → `gauss_practice_sets` and unnest the topic arrays so each question contributes to each of its topics separately. Useful for identifying weak topics and generating progress reports.
+
 ## Important Fields
+
+### `gauss_practice_sets`
+
+Practice set fields:
+
+- `id`
+- `set_code` (unique identifier like G7gauss1)
+- `title`
+- `grade`
+- `source_type`
+- `question_pdf_filename`
+- `solution_pdf_filename`
+- `description`
+- `created_at`
 
 ### `gauss_questions`
 
@@ -416,21 +439,73 @@ Current coaching uses:
 
 Current coaching does **not** depend on blueprint because not all blueprints have been validated.
 
+### `gauss_practice_sessions`
+
+Session tracking fields:
+
+- `id`
+- `user_id`
+- `practice_set_id`
+- `status` (in_progress, completed, abandoned)
+- `current_question_number`
+- `total_questions`
+- `correct_count`
+- `wrong_count`
+- `skipped_count`
+- `flagged_count`
+- `started_at`
+- `completed_at`
+- `updated_at`
+
 ### `gauss_attempts`
 
 Progress and analytics fields:
 
+- `id`
 - `session_id`
 - `user_id`
 - `question_id`
 - `selected_answer`
 - `is_correct`
-- `status`
+- `status` (unanswered, correct, wrong, skipped, flagged)
 - `wrong_answers`
 - `flagged`
 - `skipped`
 - `time_spent_seconds`
+- `used_hint`
+- `used_guided_solution`
+- `viewed_psg_solution`
+- `viewed_detailed_solution`
 - `attempted_at`
+
+### `profiles`
+
+Account fields:
+
+- `id` (references auth.users)
+- `role` (admin, teacher, student)
+- `display_name`
+- `username` (for username login students)
+- `email`
+- `login_type` (email, username)
+- `active`
+- `approval_status` (approved, disabled)
+- `must_change_password`
+- `created_by`
+- `created_at`
+- `updated_at`
+
+### `student_teacher_assignments`
+
+Assignment tracking fields:
+
+- `id`
+- `student_id`
+- `teacher_id`
+- `assigned_by`
+- `active`
+- `assigned_at`
+- `ended_at`
 
 ## Topic Performance Tracking
 
