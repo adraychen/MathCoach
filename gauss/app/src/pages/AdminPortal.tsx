@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import { LogOut, Users, UserPlus, GraduationCap, BarChart3, X, Loader2 } from 'lucide-react'
