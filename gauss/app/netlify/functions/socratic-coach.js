@@ -46,9 +46,23 @@ Coaching decision tree:
 1. If this is the first stuck-coaching message, help the student interpret the question wording and ask only the first thinking-step question.
 2. If the student's response is vague or incomplete, ask a simpler guiding question.
 3. If the student's response shows concept confusion, use the concept repair rule.
-4. If the student is on the right path, ask the next small-step question without over-praising.
-5. If the student clearly reaches the final answer through reasoning, briefly confirm the reasoning in one short sentence.
-6. If the student asks for the full solution, do not provide it in Socratic coaching; ask one next-step guiding question instead.
+4. If the student is partially correct but incomplete, use the partial-progress rule. Do not restart with a broad strategy question.
+5. If the student is on the right path, ask the next small-step question without over-praising.
+6. If the student clearly reaches the final answer through reasoning, briefly confirm the reasoning in one short sentence.
+7. If the student asks for the full solution, do not provide it in Socratic coaching; ask one next-step guiding question instead.
+`;
+
+const PARTIAL_PROGRESS_RULE = `
+Partial-progress rule:
+If the student's response is partly correct but missing one important piece, do not go back to a broad strategy question. Use the official solution privately to identify the missing piece, then ask one narrow gap-finding question that helps the student find only that missing piece. Do not directly state the missing value or final answer.
+`;
+
+const PARTIAL_PROGRESS_EXAMPLES = `
+Examples of partial-progress coaching. These are examples only; do not hardcode them:
+- Question: The sum of the prime factors of 42 is. Student says: "3 and 7". Good response: "3 × 7 gives 21. What factor is still needed to make 42?" Bad response: "How can you use division to check if 42 can be broken down further?"
+- If a student finds some favourable outcomes in a probability question but misses total outcomes, ask only about the missing total.
+- If a student finds one side length in a geometry problem but misses another, ask only about the missing length relationship.
+- If a student identifies a pattern but misses the cycle length, ask only about the repeating group.
 `;
 
 const CONCEPT_REPAIR_EXAMPLES = `
@@ -146,6 +160,7 @@ The student does not know how to start.
 ${COACHING_RULES}
 ${CONCEPT_REPAIR_RULE}
 ${RESPONSE_DECISION_TREE}
+${PARTIAL_PROGRESS_RULE}
 
 ${buildPrivateContext(context)}
 
@@ -176,12 +191,15 @@ ${COACHING_RULES}
 ${CONCEPT_REPAIR_RULE}
 ${RESPONSE_DECISION_TREE}
 ${CONCEPT_REPAIR_EXAMPLES}
+${PARTIAL_PROGRESS_RULE}
+${PARTIAL_PROGRESS_EXAMPLES}
 
 ${buildPrivateContext(context)}
 
 Follow-up instructions:
 - Read the student's latest response and the conversation history.
-- Choose only one next action: a simpler guiding question, a short concept clarification plus one guiding question, the next small-step question, or final reasoning confirmation if the student has clearly reached the answer.
+- Choose only one next action: a simpler guiding question, a short concept clarification plus one guiding question, a narrow gap-finding question for a partially correct response, the next small-step question, or final reasoning confirmation if the student has clearly reached the answer.
+- If the student is close but missing one part, do not ask a broad strategy question such as "How can you use division..." or "How can you break this down...". Ask a specific question about the missing part.
 - Do not reveal the final answer or the correct answer letter unless the student has clearly reached the final reasoning through their own work.
 - Never say only "Correct" or "Great"; keep moving the thinking forward.
 `;
