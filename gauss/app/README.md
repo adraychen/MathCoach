@@ -1,35 +1,33 @@
 # Gauss AI Coach MVP
 
-A production-oriented React/Vite + Supabase app for Grade 7 Waterloo Gauss practice. The current MVP focuses on helping students practise a CEMC Problem Set Generator paper, submit answers, save progress, and receive coaching only when mapped source-solution content is available.
+A production-oriented React/Vite + Supabase app for Grade 7 Waterloo Gauss practice. The MVP uses Waterloo/CEMC Problem Set Generator practice papers as the student-facing question source, while the app handles answer submission, session state, role-based access, progress tracking, and interactive Socratic coaching when mapped source-solution content is available.
 
 This document reflects the project status up to the current build stage.
 
 ## Current Product Direction
 
-The app no longer generates questions. Instead, it uses Waterloo/CEMC Problem Set Generator question papers and solution metadata as the practice source.
+The app does **not** generate questions for the MVP. Instead, it uses CEMC Problem Set Generator question papers and solution metadata.
 
 Current MVP principle:
 
-> Display the original PDF question paper. Use the app for answer submission, progress tracking, coaching, and teacher/admin analytics.
+> Display the original PDF question paper. Use the app for answer submission, progress tracking, interactive coaching, and teacher/admin analytics.
 
-This means students see the original Waterloo-style paper while the app handles checking, session state, and coaching availability.
+This keeps the Waterloo-style experience familiar for students while avoiding the complexity of generating new contest-style questions.
 
 ## Current MVP Status
 
 Completed so far:
 
 - `G7gauss1` practice set inserted into Supabase.
-- 25 practice questions inserted with source-year mapping.
+- 25 practice questions inserted with source-year/source-question mapping.
 - 25 PSG solution records inserted.
-- Frontend can display the scrollable question PDF.
+- Frontend displays the scrollable PDF question paper.
 - Compact answer card works.
 - Students can answer A/B/C/D/E.
 - Correct answers auto-advance.
 - Wrong answers stay on the same question and show a cross on the selected wrong letter.
-- Wrong answers do not reveal the correct answer.
+- Wrong answers do **not** reveal the correct answer.
 - Skip and Flag auto-advance.
-- Coaching panel opens from the lightbulb icon or wrong answer.
-- Coaching availability is controlled by `gauss_solutions.coaching_available`.
 - Student practice sessions and attempts are saved to Supabase.
 - Admin account was bootstrapped.
 - Admin portal is accessible.
@@ -37,7 +35,12 @@ Completed so far:
 - Admin can create student accounts and assign them to a teacher.
 - Students can log in and access the practice paper.
 - `profiles` and `student_teacher_assignments` tables are created for role-based access.
-- `gauss_source_questions` is used as the source-question / detailed-solution table.
+- `gauss_source_questions` is used as the source-question / official-solution table.
+- `gauss_solutions` was cleaned so coaching uses `coaching_available`, `coaching_mode`, and `coaching_source_id` instead of duplicated hint/detail fields.
+- Stuck coaching is now implemented as interactive Socratic coaching using a Netlify Function.
+- Coaching panel supports chat-style student input and follow-up responses.
+- Socratic coaching does not show the full solution inside the coaching panel.
+- Follow-up coaching uses the LLM to decide whether the student has reached the correct final answer, is partially correct, has concept confusion, or is off track.
 
 ## Roles and Access Model
 
@@ -76,10 +79,11 @@ Student can:
 - Access their assigned Gauss level/practice content.
 - Practise questions.
 - Save progress and attempts.
+- Use coaching only when coaching is available for the question.
 
 ## Login and Password Model
 
-Students may be created with either:
+Students may be created with either real email or username login.
 
 | Login type | Student sees | Internal auth identifier | Password reset |
 |---|---|---|---|
@@ -125,7 +129,7 @@ Q7 / 25        A  B  C  D  E        Skip   Flag
 
 Wrong answers must not reveal the correct answer.
 
-## Coaching Rules
+## Coaching Design
 
 The app identifies coaching availability from:
 
@@ -139,21 +143,124 @@ The relationship is:
 gauss_questions.id → gauss_solutions.question_id
 ```
 
-If `coaching_available = true`, the coaching panel can show:
+For interactive coaching, the app uses:
 
-- `hint_1`
-- `hint_2`
-- `guided_steps`
-- `detailed_solution_text`
-- `psg_solution_text`
+```text
+gauss_solutions.coaching_source_id → gauss_source_questions.id
+```
 
-If `coaching_available = false`, show:
+If `coaching_available = false`, `coaching_mode = 'none'`, or `coaching_source_id` is null, show:
 
 ```text
 Coaching is not available for this question yet.
 ```
 
-The current strategy is to enable coaching for practice questions whose source question exists in `gauss_source_questions`, especially for source years 2016–2025.
+### Current Coaching Scope
+
+The current coaching focus is **stuck coaching**:
+
+> The student clicks the lightbulb icon before submitting an answer because they do not know how to start.
+
+The coaching panel starts a chat-style Socratic conversation. The coach asks one guiding question at a time and the student responds in an input box.
+
+Current implemented triggers:
+
+| Trigger | Meaning | Status |
+|---|---|---|
+| `stuck` | Student asks for coaching before answering | Implemented |
+| `followup` | Student replies inside the coaching chat | Implemented |
+| `wrong_answer` | Student submits an incorrect A/B/C/D/E choice | Planned later |
+
+For now:
+
+```text
+stuck → followup → followup → followup
+```
+
+Later, wrong-answer coaching may use:
+
+```text
+wrong_answer → followup → followup → followup
+```
+
+### Socratic Coaching Rules
+
+The coaching behavior is based on the old MathCoach Socratic coaching service. The current rules are:
+
+- Maximum 2 short sentences.
+- Ask only one guiding question at a time.
+- Do not reveal the final answer.
+- Do not give the next calculation directly.
+- Do not confirm intermediate answers too early.
+- Prefer another guiding question instead of validation.
+- Reveal as little information as possible.
+- Let the student infer the next step.
+- Focus only on the current thinking step.
+- Do not combine multiple reasoning steps.
+- Do not solve the problem for the student.
+- Keep productive struggle.
+
+### Concept Repair Rule
+
+A pure Socratic question is sometimes not enough when the student does not understand a prerequisite concept. The coach now supports **concept repair**:
+
+> If the student's response shows confusion about a key word, concept, or prerequisite skill, give one short Grade 7-friendly clarification, then ask exactly one guiding question.
+
+Example:
+
+```text
+Student: 1 and 42
+Coach: A prime factor must be both a factor and a prime number. Is 42 prime?
+```
+
+The clarification must not reveal the final answer or perform the next calculation.
+
+### Partial Progress Rule
+
+When the student is close but incomplete, the coach should not restart with a broad strategy question. It should ask a narrow gap-finding question.
+
+Example:
+
+```text
+Student: 3 and 7
+Coach: 3 × 7 gives 21. What factor is still needed to make 42?
+```
+
+This helps the student locate the missing piece without directly giving it away.
+
+### Final Answer Confirmation
+
+Socratic coaching should not show the full solution, but it should confirm when the student reaches the correct final answer or correct final reasoning.
+
+The backend now uses the LLM during follow-up to classify the student response as:
+
+- `FINAL_CORRECT`
+- `PARTIAL_CORRECT`
+- `CONCEPT_CONFUSION`
+- `OFF_TRACK`
+
+If the student gives the correct final answer in text or number form, the coach should briefly confirm and summarize the key reasoning.
+
+Example:
+
+```text
+Student: I think it is twelve.
+Coach: Yes, that answers the question. You found the prime factors and added them.
+```
+
+The coach should not continue asking another guiding question after the final answer has clearly been reached.
+
+### Full Solution Policy
+
+The Socratic coach does **not** show the full official solution inside the coaching chat.
+
+Removed from the current coaching flow:
+
+- `show_full_solution`
+- `can_show_solution`
+- “Show full solution” button
+
+A separate review-solution feature may be added later after a question or practice session is completed, but it should be separate from the Socratic coaching panel.
 
 ## Source Question Mapping
 
@@ -174,7 +281,7 @@ G7gauss1 practice Q11
 → source_question_number = 11
 ```
 
-The detailed/source-solution table is:
+The source-question table is:
 
 ```text
 gauss_source_questions
@@ -188,7 +295,11 @@ gauss_questions.source_grade = gauss_source_questions.grade
 gauss_questions.source_question_number = gauss_source_questions.question_number
 ```
 
-The first coaching test was Q11, mapped to `waterloo_gauss_g7_2022_q11`.
+The first coaching test was Q11, mapped to:
+
+```text
+waterloo_gauss_g7_2022_q11
+```
 
 ## Database Tables
 
@@ -197,9 +308,9 @@ The first coaching test was Q11, mapped to `waterloo_gauss_g7_2022_q11`.
 | Table | Purpose |
 |---|---|
 | `gauss_practice_sets` | Practice set metadata, including set code and PDF filename |
-| `gauss_questions` | Question metadata, source mapping, topics, correct answer |
-| `gauss_solutions` | PSG solution, detailed solution, coaching fields, coaching availability |
-| `gauss_source_questions` | Source Waterloo/CEMC questions and official solutions |
+| `gauss_questions` | Practice-set question metadata, source mapping, topics, correct answer |
+| `gauss_solutions` | PSG solution plus coaching availability/link for each practice question |
+| `gauss_source_questions` | Source Waterloo/CEMC questions, official answers, official solutions, reasoning metadata |
 
 ### Student progress
 
@@ -243,18 +354,67 @@ Deprecated for current MVP display method, but kept for possible future cropped-
 
 ### `gauss_solutions`
 
-Key coaching fields:
+Current cleaned fields:
 
+- `id`
+- `question_id`
+- `psg_solution_text`
+- `psg_solution_summary`
+- `psg_solution_image_url`
 - `coaching_available`
-- `detailed_solution_status`
-- `detailed_solution_text`
-- `key_strategy`
+- `coaching_source_id`
+- `coaching_mode`
+- `created_at`
+- `updated_at`
+
+Removed/deprecated duplicate coaching fields:
+
 - `hint_1`
 - `hint_2`
 - `guided_steps`
+- `key_strategy`
 - `common_mistake`
 - `reflection_question`
-- `psg_solution_text`
+- `detailed_solution_text`
+- `detailed_solution_json`
+- `detailed_solution_image_url`
+- `detailed_solution_source_pdf`
+- `detailed_solution_page`
+- `detailed_solution_status`
+
+### `gauss_source_questions`
+
+Useful source/coaching fields:
+
+- `id`
+- `year`
+- `program_name`
+- `grade`
+- `question_number`
+- `question_text`
+- `options`
+- `correct_answer`
+- `official_solution`
+- `reasoning_summary`
+- `solution_pattern`
+- `primary_topic`
+- `secondary_topic`
+- `archetype`
+- `blueprint_code`
+- `visual_required`
+- `visual_description`
+
+Current coaching uses:
+
+- `question_text`
+- `options`
+- `official_solution`
+- `reasoning_summary`
+- `solution_pattern`
+- `archetype` as optional reasoning-style context
+- `visual_description` when relevant
+
+Current coaching does **not** depend on blueprint because not all blueprints have been validated.
 
 ### `gauss_attempts`
 
@@ -314,13 +474,14 @@ Stored only in Netlify environment variables:
 ```text
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
+GROQ_API_KEY=
 ```
 
-Never prefix the service role key with `VITE_` and never expose it to browser code.
+Never prefix the service role key or Groq key with `VITE_` and never expose either key to browser code.
 
 ## Netlify Functions
 
-Backend functions are used for secure account-management actions.
+Backend functions are used for secure account-management and coaching actions.
 
 Current or planned functions:
 
@@ -328,10 +489,11 @@ Current or planned functions:
 |---|---|
 | `create-teacher-account` | Admin creates a teacher account |
 | `create-student-account` | Admin creates a student and assigns a teacher |
+| `socratic-coach` | Interactive stuck/follow-up Socratic coaching |
 | `reset-user-password` | Admin/teacher password reset logic, with role restrictions |
 | `reassign-student-teacher` | Admin reassigns a student to another teacher |
 
-A separate Render backend is not needed for the current MVP. Netlify Functions are enough for account creation, password reset, assignment, and future lightweight coaching endpoints.
+A separate Render backend is not needed for the current MVP. Netlify Functions are enough for account creation, password reset, assignment, and lightweight coaching endpoints.
 
 ## Current Project Structure
 
@@ -343,7 +505,8 @@ guass/
 │   ├── netlify/
 │   │   └── functions/
 │   │       ├── create-teacher-account.js
-│   │       └── create-student-account.js
+│   │       ├── create-student-account.js
+│   │       └── socratic-coach.js
 │   ├── public/
 │   │   └── pdfs/
 │   │       └── G7gauss1-question.pdf
@@ -380,7 +543,8 @@ guass/
     ├── 002_seed_G7gauss1_metadata.sql
     ├── 004_create_gauss_practice_sessions.sql
     ├── 005_create_profiles_and_assignments.sql
-    └── 008_enable_coaching_for_2016_2025_sources.sql
+    ├── 008_enable_coaching_for_2016_2025_sources.sql
+    └── 009_clean_gauss_solutions_schema.sql
 ```
 
 ## Data Import Workflow
@@ -402,7 +566,8 @@ G7gauss2-psg-metadata.json
 5. Claude Code converts reviewed metadata to JSON/SQL.
 6. Insert practice set, questions, and PSG solutions into Supabase.
 7. Match source questions by year/grade/question number against `gauss_source_questions`.
-8. Enable coaching only where source solution content exists.
+8. Populate `gauss_solutions.coaching_source_id` from the matching `gauss_source_questions.id`.
+9. Enable coaching only where source solution content exists.
 
 ## Tech Stack
 
@@ -416,15 +581,16 @@ G7gauss2-psg-metadata.json
 - Supabase PostgreSQL
 - Supabase Row Level Security later
 - Netlify hosting
-- Netlify Functions for secure admin actions
+- Netlify Functions for secure admin and coaching actions
+- Groq / Llama 3.3 70B for Socratic coaching
 
 ## Next Planned Steps
 
 Likely next work items:
 
-1. Complete bulk coaching update for 2016–2025 questions using `gauss_source_questions`.
-2. Verify the coaching panel correctly displays available coaching only for enabled questions.
-3. Improve coaching fields beyond generic hints.
+1. Continue testing stuck coaching across multiple question types, especially Q8, Q11, Q15, Q16, Q18, and Q25.
+2. Tune Socratic prompt behavior based on student-response examples.
+3. Build wrong-answer coaching as a separate starting trigger later.
 4. Add teacher portal student statistics.
 5. Add admin portal teacher/student list and statistics.
 6. Add RLS policies for production security.
@@ -437,6 +603,8 @@ Likely next work items:
 - The app currently uses full PDF display, not cropped individual question images.
 - `question_image_url` and crop fields are kept but not used in the MVP display.
 - Correct answers should not be revealed after a wrong answer.
-- Coaching should only appear when `gauss_solutions.coaching_available = true`.
+- Coaching should only appear when `gauss_solutions.coaching_available = true` and `coaching_source_id` is available.
+- Socratic coaching does not show the full solution in the coaching panel.
+- The coach may confirm when the student reaches the correct final answer or correct reasoning.
 - Teachers cannot reset username/internal-email student passwords.
 - Students must always be assigned to a teacher when created.

@@ -112,12 +112,6 @@ ${context.reasoning_summary || 'Not available'}
 Solution pattern, private:
 ${context.solution_pattern || 'Not available'}
 
-Correct answer letter, private:
-${context.correct_answer || 'Not available'}
-
-Correct option text, private:
-${getCorrectOptionText(context) || 'Not available'}
-
 Official solution, for private reference only:
 ${context.official_solution || 'Not available'}
 
@@ -204,22 +198,10 @@ ${buildPrivateContext(context)}
 
 Follow-up instructions:
 - Read the student's latest response and the conversation history.
-- First classify the student's latest response privately as one of these categories:
-  1. FINAL_CORRECT: The student has given the correct final answer, the correct answer in words, the correct option value, or equivalent correct reasoning.
-  2. PARTIAL_CORRECT: The student has a useful piece of the reasoning but has not completed the answer.
-  3. CONCEPT_CONFUSION: The student shows misunderstanding of a key word, concept, or prerequisite skill.
-  4. OFF_TRACK: The student response does not follow the needed reasoning.
-- If FINAL_CORRECT: briefly confirm and summarize the key reasoning in one short sentence. Do not ask another question.
-- If PARTIAL_CORRECT: ask one narrow gap-finding question that targets only the missing piece. Do not restart with a broad strategy question.
-- If CONCEPT_CONFUSION: give one short Grade 7-friendly clarification, then ask exactly one guiding question.
-- If OFF_TRACK: ask one simpler guiding question.
+- Choose only one next action: a simpler guiding question, a short concept clarification plus one guiding question, a narrow gap-finding question for a partially correct response, the next small-step question, or final reasoning confirmation if the student has clearly reached the answer.
 - If the student is close but missing one part, do not ask a broad strategy question such as "How can you use division..." or "How can you break this down...". Ask a specific question about the missing part.
-- Do not reveal the final answer or the correct answer letter unless the student's latest response has already reached the final answer or final reasoning.
-- Never say only "Correct" or "Great"; either ask the next question or confirm the final reasoning when complete.
-
-Examples of FINAL_CORRECT handling. These are examples only; do not hardcode them:
-- If the correct answer is 12 and the student says "12" or "I think it is twelve", confirm that this answers the question and summarize the reasoning.
-- If the correct answer is 8 cm and the student says "the answer is 8", confirm that this matches the greatest length and summarize the diameter-radius idea.
+- Do not reveal the final answer or the correct answer letter unless the student has clearly reached the final reasoning through their own work.
+- Never say only "Correct" or "Great"; keep moving the thinking forward.
 `;
 
   const messages = [{ role: 'system', content: systemPrompt }];
@@ -230,78 +212,6 @@ Examples of FINAL_CORRECT handling. These are examples only; do not hardcode the
   }
 
   return callGroq(messages);
-}
-
-function normalizeAnswerText(value) {
-  if (value === null || value === undefined) return '';
-  return String(value)
-    .toLowerCase()
-    .replace(/[,$]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function extractNumbers(value) {
-  const text = normalizeAnswerText(value);
-  const matches = text.match(/-?\d+(?:\.\d+)?/g);
-  return matches ? matches.map(Number) : [];
-}
-
-function getCorrectOptionText(context) {
-  const correctLetter = normalizeAnswerText(context.correct_answer).toUpperCase();
-  const options = context.options || {};
-  return options?.[correctLetter] ?? options?.[correctLetter.toLowerCase()] ?? '';
-}
-
-function studentReachedFinalAnswer(context, studentMessage = '') {
-  const message = normalizeAnswerText(studentMessage);
-  if (!message) return false;
-
-  const correctLetter = normalizeAnswerText(context.correct_answer).toUpperCase();
-  const correctOptionText = getCorrectOptionText(context);
-  const normalizedOption = normalizeAnswerText(correctOptionText);
-
-  // Accept the answer letter when the student clearly gives only a letter or says "answer is C".
-  if (correctLetter && /^[A-E]$/.test(correctLetter)) {
-    const letterPattern = new RegExp(`(^|\\b)(answer\\s*(is|=)?\\s*)?${correctLetter.toLowerCase()}(\\b|$)`, 'i');
-    if (letterPattern.test(studentMessage.trim())) return true;
-  }
-
-  // Accept the exact option text if present.
-  if (normalizedOption && message.includes(normalizedOption)) return true;
-
-  // Accept numeric answer when the correct option contains a number, even if the student omits units.
-  const optionNumbers = extractNumbers(correctOptionText);
-  const messageNumbers = extractNumbers(studentMessage);
-  if (optionNumbers.length > 0 && messageNumbers.length > 0) {
-    const correctNumber = optionNumbers[0];
-    if (messageNumbers.some((n) => Math.abs(n - correctNumber) < 1e-9)) return true;
-  }
-
-  return false;
-}
-
-function buildFinalConfirmation(context) {
-  const reasoning = normalizeAnswerText(context.reasoning_summary);
-  const pattern = normalizeAnswerText(context.solution_pattern);
-
-  if (reasoning.includes('prime') || pattern.includes('factor')) {
-    return 'Yes—that answers the question. You found the prime factors and added them.';
-  }
-
-  if (reasoning.includes('diameter') || pattern.includes('double the radius') || normalizeAnswerText(context.question_text).includes('circle')) {
-    return 'Yes—that matches the greatest length. The key idea is that the diameter is twice the radius.';
-  }
-
-  if (reasoning.includes('mean') || reasoning.includes('average') || pattern.includes('mean')) {
-    return 'Yes—that answers the question. You used the mean to connect the total and the number of values.';
-  }
-
-  if (reasoning.includes('probability') || pattern.includes('outcome')) {
-    return 'Yes—that answers the question. You compared the favourable outcomes with the total possible outcomes.';
-  }
-
-  return 'Yes—that answers the question. Your reasoning reaches the required result.';
 }
 
 function getFallbackStuckMessage(context) {
@@ -331,8 +241,7 @@ function getFallbackFollowupMessage(studentMessage = '') {
     return 'Which word in the question seems most important?';
   }
 
-  // Fallback is intentionally conservative because final-answer interpretation should be handled by Groq.
-  return 'Can you explain the step that led to your answer?';
+  return 'What is the next small thing you can figure out?';
 }
 
 
@@ -443,7 +352,7 @@ export async function handler(event) {
 
   const { data: question, error: qError } = await supabase
     .from('gauss_questions')
-    .select('id, short_problem_summary, primary_topics, secondary_topics, difficulty_band, correct_answer')
+    .select('id, short_problem_summary, primary_topics, secondary_topics, difficulty_band')
     .eq('practice_set_id', practiceSet.id)
     .eq('practice_question_number', practice_question_number)
     .single();
@@ -480,7 +389,7 @@ export async function handler(event) {
 
   const { data: sourceQuestion, error: srcError } = await supabase
     .from('gauss_source_questions')
-    .select('question_text, options, correct_answer, official_solution, reasoning_summary, solution_pattern, archetype, visual_required, visual_description')
+    .select('question_text, options, official_solution, reasoning_summary, solution_pattern, archetype, visual_required, visual_description')
     .eq('id', solution.coaching_source_id)
     .single();
 
@@ -497,7 +406,6 @@ export async function handler(event) {
     primary_topics: question.primary_topics,
     secondary_topics: question.secondary_topics,
     difficulty_band: question.difficulty_band,
-    correct_answer: question.correct_answer || sourceQuestion.correct_answer,
     psg_solution_text: solution.psg_solution_text,
     psg_solution_summary: solution.psg_solution_summary,
     question_text: sourceQuestion.question_text,
@@ -517,8 +425,6 @@ export async function handler(event) {
     coachMessage = await getGroqStuckCoaching(context);
     if (!coachMessage) coachMessage = getFallbackStuckMessage(context);
   } else {
-    // Follow-up messages are interpreted by the LLM so text answers such as
-    // "twelve", "the answer is 8", or equivalent reasoning can be recognized.
     coachMessage = await getGroqFollowupCoaching(context, student_message, conversation_history);
     if (!coachMessage) coachMessage = getFallbackFollowupMessage(student_message);
   }
