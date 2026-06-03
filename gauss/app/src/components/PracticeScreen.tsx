@@ -555,14 +555,22 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   }, [questions, questionStates, goToQuestion])
 
   const handleRestart = useCallback(async () => {
-    if (!user?.id || !practiceSetId) return
+    if (!user?.id || !practiceSetId) {
+      console.error('Cannot restart: missing user or practiceSetId')
+      alert('Unable to restart. Please refresh the page.')
+      return
+    }
 
-    // Mark current session as abandoned
+    console.log('Restarting practice...')
+
+    // Mark current session as abandoned (not completed)
     if (sessionId) {
+      console.log('Marking session as abandoned:', sessionId)
       await updateSession({ status: 'abandoned' })
     }
 
     // Create new session
+    console.log('Creating new session...')
     const { data: newSession, error: createError } = await (supabase
       .from('gauss_practice_sessions') as any)
       .insert({
@@ -579,11 +587,19 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
       .select()
       .single()
 
-    if (createError || !newSession) {
+    if (createError) {
       console.error('Failed to create new session:', createError)
+      alert(`Failed to restart: ${createError.message}`)
       return
     }
 
+    if (!newSession) {
+      console.error('No session data returned')
+      alert('Failed to restart: No session created')
+      return
+    }
+
+    console.log('New session created:', newSession.id)
     setSessionId((newSession as SessionRow).id)
 
     // Reset all question states
