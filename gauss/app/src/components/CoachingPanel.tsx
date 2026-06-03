@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Lightbulb, BookOpen, Eye, Loader2, RefreshCw } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Lightbulb, BookOpen, Eye, Loader2, Send } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Solution } from '../types/database'
 
@@ -9,6 +9,11 @@ interface CoachingPanelProps {
   onToggle: () => void
   setCode: string
   practiceQuestionNumber: number
+}
+
+interface ChatMessage {
+  role: 'coach' | 'student'
+  content: string
 }
 
 interface CoachingResponse {
@@ -28,29 +33,41 @@ export function CoachingPanel({
 }: CoachingPanelProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [coachMessage, setCoachMessage] = useState<string | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [showFullSolution, setShowFullSolution] = useState(false)
   const [hasFetched, setHasFetched] = useState(false)
+  const [studentInput, setStudentInput] = useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const coachingAvailable = solution?.coaching_available ?? false
   const sourceQuestion = solution?.source_question
 
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
   // Reset state when question changes
   useEffect(() => {
-    setCoachMessage(null)
+    setMessages([])
     setShowFullSolution(false)
     setError(null)
     setHasFetched(false)
+    setStudentInput('')
   }, [practiceQuestionNumber])
 
-  // Fetch coaching when panel opens
+  // Fetch initial coaching when panel opens
   useEffect(() => {
     if (isOpen && coachingAvailable && !hasFetched && !loading) {
-      fetchCoaching()
+      fetchCoaching('stuck', '', [])
     }
   }, [isOpen, coachingAvailable, hasFetched])
 
-  const fetchCoaching = async () => {
+  const fetchCoaching = async (
+    trigger: 'stuck' | 'followup',
+    studentMessage: string,
+    conversationHistory: ChatMessage[]
+  ) => {
     setLoading(true)
     setError(null)
 
@@ -64,6 +81,12 @@ export function CoachingPanel({
         return
       }
 
+      // Convert conversation history to API format
+      const apiHistory = conversationHistory.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+      }))
+
       const response = await fetch('/.netlify/functions/socratic-coach', {
         method: 'POST',
         headers: {
@@ -73,9 +96,9 @@ export function CoachingPanel({
         body: JSON.stringify({
           set_code: setCode,
           practice_question_number: practiceQuestionNumber,
-          coaching_trigger: 'stuck',
-          student_message: '',
-          conversation_history: [],
+          coaching_trigger: trigger,
+          student_message: studentMessage,
+          conversation_history: apiHistory,
         }),
       })
 
@@ -90,7 +113,7 @@ export function CoachingPanel({
       if (!result.available) {
         setError(result.message || 'Coaching is not available for this question.')
       } else if (result.coach_message) {
-        setCoachMessage(result.coach_message)
+        setMessages(prev => [...prev, { role: 'coach', content: result.coach_message! }])
       }
 
       setHasFetched(true)
@@ -101,39 +124,48 @@ export function CoachingPanel({
     }
   }
 
+  const handleSendMessage = async () => {
+    const trimmedInput = studentInput.trim()
+    if (!trimmedInput || loading) return
+
+    // Add student message to chat
+    const newStudentMessage: ChatMessage = { role: 'student', content: trimmedInput }
+    const updatedMessages = [...messages, newStudentMessage]
+    setMessages(updatedMessages)
+    setStudentInput('')
+
+    // Call API for followup
+    await fetchCoaching('followup', trimmedInput, updatedMessages)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
   const resetCoaching = () => {
-    setCoachMessage(null)
+    setMessages([])
     setShowFullSolution(false)
     setError(null)
     setHasFetched(false)
-  }
-
-  const handleRetry = () => {
-    setHasFetched(false)
-    fetchCoaching()
+    setStudentInput('')
   }
 
   const renderCoachingContent = () => {
-    // Loading state
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 size={24} className="animate-spin text-yellow-600" />
-          <span className="ml-2 text-sm text-gray-600">Getting coaching...</span>
-        </div>
-      )
-    }
-
     // Error state
-    if (error) {
+    if (error && messages.length === 0) {
       return (
         <div className="space-y-3">
           <p className="text-red-600 text-sm">{error}</p>
           <button
-            onClick={handleRetry}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            onClick={() => {
+              setError(null)
+              setHasFetched(false)
+            }}
+            className="text-sm text-blue-600 hover:text-blue-800"
           >
-            <RefreshCw size={14} />
             Try again
           </button>
         </div>
@@ -173,58 +205,87 @@ export function CoachingPanel({
       )
     }
 
-    // Coach message view (chat-style)
-    if (coachMessage) {
-      return (
-        <div className="space-y-4">
-          {/* Coach message bubble */}
-          <div className="flex gap-2">
-            <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
-              <Lightbulb size={16} className="text-yellow-600" />
-            </div>
-            <div className="flex-1 bg-yellow-50 border border-yellow-200 rounded-lg rounded-tl-none p-3">
-              <p className="text-yellow-800 text-sm whitespace-pre-wrap">
-                {coachMessage}
-              </p>
-            </div>
-          </div>
-
-          {/* Disabled student input */}
-          <div className="border border-gray-200 rounded-lg p-2 bg-gray-50">
-            <input
-              type="text"
-              disabled
-              placeholder="Follow-up coaching coming next."
-              className="w-full bg-transparent text-sm text-gray-400 placeholder-gray-400 outline-none cursor-not-allowed"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={handleRetry}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-sm font-medium"
+    // Chat view
+    return (
+      <div className="flex flex-col h-full">
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto space-y-3 mb-3 max-h-64">
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex gap-2 ${msg.role === 'student' ? 'flex-row-reverse' : ''}`}
             >
-              <RefreshCw size={14} />
-              I'm still stuck
-            </button>
+              {msg.role === 'coach' && (
+                <div className="w-7 h-7 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                  <Lightbulb size={14} className="text-yellow-600" />
+                </div>
+              )}
+              <div
+                className={`max-w-[85%] rounded-lg p-2.5 text-sm ${
+                  msg.role === 'coach'
+                    ? 'bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-tl-none'
+                    : 'bg-blue-50 border border-blue-200 text-blue-800 rounded-tr-none'
+                }`}
+              >
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="flex gap-2">
+              <div className="w-7 h-7 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                <Lightbulb size={14} className="text-yellow-600" />
+              </div>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg rounded-tl-none p-2.5">
+                <Loader2 size={16} className="animate-spin text-yellow-600" />
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input area */}
+        {messages.length > 0 && (
+          <div className="border-t border-gray-200 pt-3 space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={studentInput}
+                onChange={(e) => setStudentInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your thinking here..."
+                disabled={loading}
+                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={loading || !studentInput.trim()}
+                className="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Send size={16} />
+              </button>
+            </div>
 
             <button
               onClick={() => setShowFullSolution(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
             >
-              <Eye size={16} />
+              <Eye size={14} />
               Show full solution
             </button>
           </div>
-        </div>
-      )
-    }
+        )}
 
-    // Default: waiting to fetch
-    return (
-      <p className="text-gray-500 text-sm italic">
-        Click above to get coaching help.
-      </p>
+        {/* Initial loading state */}
+        {messages.length === 0 && loading && (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 size={24} className="animate-spin text-yellow-600" />
+            <span className="ml-2 text-sm text-gray-600">Getting coaching...</span>
+          </div>
+        )}
+      </div>
     )
   }
 

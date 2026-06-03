@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 /**
  * Netlify Function: Socratic Coach
  *
- * Returns one Socratic coaching message when the student is stuck.
+ * Returns one Socratic coaching message when the student is stuck or following up.
  *
  * POST /.netlify/functions/socratic-coach
  *
@@ -14,7 +14,7 @@ import { createClient } from '@supabase/supabase-js';
  *   {
  *     "set_code": "G7gauss1",
  *     "practice_question_number": 11,
- *     "coaching_trigger": "stuck",
+ *     "coaching_trigger": "stuck" | "followup",
  *     "student_message": "",
  *     "conversation_history": []
  *   }
@@ -39,9 +39,9 @@ Rules:
 const MODEL_NAME = 'llama-3.3-70b-versatile';
 
 /**
- * Call Groq API for stuck coaching
+ * Call Groq API for stuck coaching (first message)
  */
-async function getGroqCoaching(context) {
+async function getGroqStuckCoaching(context) {
   const groqApiKey = process.env.GROQ_API_KEY;
 
   if (!groqApiKey) {
@@ -55,6 +55,7 @@ async function getGroqCoaching(context) {
     primary_topics,
     secondary_topics,
     archetype,
+    official_solution,
   } = context;
 
   // Build the hint direction from available context
@@ -91,7 +92,26 @@ ${archetype ? `Problem archetype: ${archetype}` : ''}
 Suggested starting hint direction (use as inspiration, not verbatim):
 ${hintDirection}
 
-Ask one Grade 7-friendly question that helps the student understand what the problem is asking and how to begin. Do not reveal the answer.
+Official solution, for private reference only:
+${official_solution || 'Not available'}
+
+Use this only to know the correct path. Do not reveal it. Do not give the next calculation.
+
+Ask exactly one Grade 7-friendly question.
+
+For the first stuck-coaching message:
+- Help the student interpret the wording of the question.
+- Do not ask the student to start solving yet.
+- Do not ask two-part questions.
+- Do not use 'and' to combine two tasks.
+- Do not ask both what the concept means and how to begin in the same message.
+- Ask only the first thinking step.
+
+Good example:
+The question asks for prime factors, not just any factors. What does "prime factor" mean?
+
+Bad example:
+What does it mean to find the prime factors, and how can you start breaking down 42?
 `;
 
   try {
@@ -106,7 +126,7 @@ Ask one Grade 7-friendly question that helps the student understand what the pro
         messages: [
           {
             role: 'system',
-            content: 'You are a Socratic Waterloo math tutor for Grade 7 students.',
+            content: 'You are a Socratic Waterloo math tutor for Grade 7 students. Ask only ONE question at a time. Never combine multiple questions.',
           },
           {
             role: 'user',
@@ -132,27 +152,132 @@ Ask one Grade 7-friendly question that helps the student understand what the pro
 }
 
 /**
- * Generate fallback message when Groq is unavailable
+ * Call Groq API for followup coaching
  */
-function getFallbackMessage(context) {
-  const { reasoning_summary, solution_pattern, primary_topics } = context;
+async function getGroqFollowupCoaching(context, studentMessage, conversationHistory) {
+  const groqApiKey = process.env.GROQ_API_KEY;
 
-  if (reasoning_summary) {
-    // Ask a question based on reasoning_summary
-    // Make it more conversational for Grade 7
-    return `Let's break this down together. ${reasoning_summary} What do you think we need to figure out first?`;
+  if (!groqApiKey) {
+    return null;
   }
 
-  if (solution_pattern) {
-    return `Think about the approach: ${solution_pattern}. What information does the problem give you?`;
+  const {
+    question_text,
+    reasoning_summary,
+    solution_pattern,
+    official_solution,
+    primary_topics,
+  } = context;
+
+  const systemPrompt = `
+You are a Socratic Waterloo math tutor for Grade 7 students.
+
+${COACHING_RULES}
+
+Question being worked on:
+${question_text || 'Question text not available'}
+
+${primary_topics && primary_topics.length > 0 ? `Topics: ${primary_topics.join(', ')}` : ''}
+
+Key reasoning approach (private, do not reveal directly):
+${reasoning_summary || ''}
+
+Solution pattern (private, do not reveal directly):
+${solution_pattern || ''}
+
+Official solution, for private reference only:
+${official_solution || 'Not available'}
+
+Use this only to know the correct path. Do not reveal it. Do not give the next calculation.
+
+Instructions for followup:
+- Ask only one guiding question.
+- Do not reveal the final answer.
+- Do not give the next calculation directly.
+- If the student is vague or wrong, ask a simpler clarifying question.
+- If the student is on the right path, move to the next small step without over-praising.
+- Never say "Great!" or "Correct!" - instead ask the next question.
+- Keep responses to 1-2 short sentences.
+`;
+
+  // Build messages array with conversation history
+  const messages = [
+    {
+      role: 'system',
+      content: systemPrompt,
+    },
+  ];
+
+  // Add conversation history
+  if (conversationHistory && conversationHistory.length > 0) {
+    for (const msg of conversationHistory) {
+      messages.push({
+        role: msg.role === 'student' ? 'user' : 'assistant',
+        content: msg.content,
+      });
+    }
+  }
+
+  // Add current student message
+  if (studentMessage) {
+    messages.push({
+      role: 'user',
+      content: studentMessage,
+    });
+  }
+
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqApiKey}`,
+      },
+      body: JSON.stringify({
+        model: MODEL_NAME,
+        messages,
+        temperature: 0.2,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Groq API error:', errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch (error) {
+    console.error('Groq API call failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Generate fallback message when Groq is unavailable
+ */
+function getFallbackStuckMessage(context) {
+  const { reasoning_summary, primary_topics } = context;
+
+  if (reasoning_summary) {
+    // Extract just the first concept to ask about
+    return `What is the question asking you to find?`;
   }
 
   if (primary_topics && primary_topics.length > 0) {
-    return `This problem involves ${primary_topics[0]}. What is the question asking you to find?`;
+    return `This problem involves ${primary_topics[0]}. What does the question ask you to find?`;
   }
 
-  // Default fallback
+  // Default fallback - single simple question
   return 'What is the question asking you to find?';
+}
+
+/**
+ * Generate fallback followup message when Groq is unavailable
+ */
+function getFallbackFollowupMessage() {
+  return 'Can you tell me more about your thinking?';
 }
 
 export async function handler(event) {
@@ -221,7 +346,13 @@ export async function handler(event) {
     };
   }
 
-  const { set_code, practice_question_number, coaching_trigger } = body;
+  const {
+    set_code,
+    practice_question_number,
+    coaching_trigger,
+    student_message,
+    conversation_history,
+  } = body;
 
   // Validate required fields
   if (!set_code || typeof set_code !== 'string') {
@@ -240,11 +371,11 @@ export async function handler(event) {
     };
   }
 
-  if (coaching_trigger !== 'stuck') {
+  if (coaching_trigger !== 'stuck' && coaching_trigger !== 'followup') {
     return {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Only coaching_trigger "stuck" is supported' }),
+      body: JSON.stringify({ error: 'coaching_trigger must be "stuck" or "followup"' }),
     };
   }
 
@@ -344,7 +475,7 @@ export async function handler(event) {
     // From gauss_source_questions
     question_text: sourceQuestion.question_text,
     options: sourceQuestion.options,
-    official_solution: sourceQuestion.official_solution, // Private - only for LLM context
+    official_solution: sourceQuestion.official_solution,
     reasoning_summary: sourceQuestion.reasoning_summary,
     solution_pattern: sourceQuestion.solution_pattern,
     archetype: sourceQuestion.archetype,
@@ -352,11 +483,20 @@ export async function handler(event) {
     visual_description: sourceQuestion.visual_description,
   };
 
-  // Try Groq first, fall back to rule-based
-  let coachMessage = await getGroqCoaching(context);
+  let coachMessage;
 
-  if (!coachMessage) {
-    coachMessage = getFallbackMessage(context);
+  if (coaching_trigger === 'stuck') {
+    // First stuck message
+    coachMessage = await getGroqStuckCoaching(context);
+    if (!coachMessage) {
+      coachMessage = getFallbackStuckMessage(context);
+    }
+  } else {
+    // Followup message
+    coachMessage = await getGroqFollowupCoaching(context, student_message, conversation_history);
+    if (!coachMessage) {
+      coachMessage = getFallbackFollowupMessage();
+    }
   }
 
   // Return response
@@ -366,7 +506,7 @@ export async function handler(event) {
     body: JSON.stringify({
       available: true,
       coach_message: coachMessage,
-      stage: 'stuck',
+      stage: coaching_trigger,
       can_show_solution: true,
     }),
   };
