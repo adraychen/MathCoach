@@ -787,6 +787,8 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
               solution={currentQuestion.solution}
               isOpen={coachingOpen}
               onToggle={toggleCoaching}
+              setCode={setCode}
+              practiceQuestionNumber={currentQuestion.practice_question_number}
             />
           </div>
         </div>
