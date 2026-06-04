@@ -12,6 +12,7 @@ import type { QuestionWithSolution, QuestionState, AnswerChoice, Solution, Conte
 
 interface ContestRow {
   id: string
+  question_pdf_filename: string | null
 }
 
 interface QuestionRow {
@@ -90,6 +91,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   // Session tracking
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [contestId, setContestId] = useState<string | null>(null)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
 
   // Fetch questions, solutions, and session
   useEffect(() => {
@@ -107,7 +109,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
         // Get contest
         const { data: contest, error: contestError } = await supabase
           .from('gauss_contests')
-          .select('id')
+          .select('id, question_pdf_filename')
           .eq('contest_code', contestCode)
           .single()
 
@@ -117,6 +119,11 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
 
         const c = contest as ContestRow
         setContestId(c.id)
+
+        // Set PDF URL from contest data
+        if (c.question_pdf_filename) {
+          setPdfUrl(`/questions/${c.question_pdf_filename}`)
+        }
 
         // Get questions
         const { data: questionsData, error: questionsError } = await supabase
@@ -775,11 +782,17 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
 
         {/* PDF Viewer - Top */}
         <div className="flex-1 min-h-0">
-          <PDFViewer
-            pdfUrl="/G7gauss1-question.pdf"
-            currentPage={pdfPage}
-            onPageChange={handlePdfPageChange}
-          />
+          {pdfUrl ? (
+            <PDFViewer
+              pdfUrl={pdfUrl}
+              currentPage={pdfPage}
+              onPageChange={handlePdfPageChange}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full bg-gray-200 rounded-lg">
+              <p className="text-gray-500">No PDF available for this contest</p>
+            </div>
+          )}
         </div>
 
         {/* Answer Card - Bottom */}
