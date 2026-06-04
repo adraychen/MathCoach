@@ -7,15 +7,16 @@ import { CoachingPanel } from './CoachingPanel'
 import { ProgressIndicator } from './ProgressIndicator'
 import { SummaryPanel } from './SummaryPanel'
 import { UserHeader } from './UserHeader'
-import type { QuestionWithSolution, QuestionState, AnswerChoice, Solution, PracticeProgress } from '../types/database'
+import { ArrowLeft } from 'lucide-react'
+import type { QuestionWithSolution, QuestionState, AnswerChoice, Solution, ContestProgress } from '../types/database'
 
-interface PracticeSetRow {
+interface ContestRow {
   id: string
 }
 
 interface QuestionRow {
   id: string
-  practice_question_number: number
+  contest_question_number: number
   correct_answer: string
   short_problem_summary: string | null
   question_pdf_page: number | null
@@ -69,11 +70,12 @@ interface AttemptRow {
   skipped: boolean | null
 }
 
-interface PracticeScreenProps {
-  setCode: string
+interface ContestScreenProps {
+  contestCode: string
+  onBack?: () => void
 }
 
-export function PracticeScreen({ setCode }: PracticeScreenProps) {
+export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   const { user } = useAuth()
   const [questions, setQuestions] = useState<QuestionWithSolution[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -87,7 +89,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
   // Session tracking
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [practiceSetId, setPracticeSetId] = useState<string | null>(null)
+  const [contestId, setContestId] = useState<string | null>(null)
 
   // Fetch questions, solutions, and session
   useEffect(() => {
@@ -102,26 +104,26 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
       setError(null)
 
       try {
-        // Get practice set
-        const { data: practiceSet, error: psError } = await supabase
-          .from('gauss_practice_sets')
+        // Get contest
+        const { data: contest, error: contestError } = await supabase
+          .from('gauss_contests')
           .select('id')
-          .eq('set_code', setCode)
+          .eq('contest_code', contestCode)
           .single()
 
-        if (psError || !practiceSet) {
-          throw new Error(`Practice set "${setCode}" not found`)
+        if (contestError || !contest) {
+          throw new Error(`Contest "${contestCode}" not found`)
         }
 
-        const ps = practiceSet as PracticeSetRow
-        setPracticeSetId(ps.id)
+        const c = contest as ContestRow
+        setContestId(c.id)
 
         // Get questions
         const { data: questionsData, error: questionsError } = await supabase
           .from('gauss_questions')
           .select('*')
-          .eq('practice_set_id', ps.id)
-          .order('practice_question_number', { ascending: true })
+          .eq('contest_id', c.id)
+          .order('contest_question_number', { ascending: true })
 
         if (questionsError) {
           throw questionsError
@@ -130,7 +132,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
         const qData = (questionsData || []) as QuestionRow[]
 
         if (qData.length === 0) {
-          throw new Error('No questions found for this practice set')
+          throw new Error('No questions found for this contest')
         }
 
         // Get solutions for all questions
@@ -206,7 +208,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
         const questionsWithSolutions: QuestionWithSolution[] = qData.map((q) => ({
           id: q.id,
-          practice_question_number: q.practice_question_number,
+          contest_question_number: q.contest_question_number,
           correct_answer: q.correct_answer as AnswerChoice,
           short_problem_summary: q.short_problem_summary,
           question_pdf_page: q.question_pdf_page,
@@ -221,10 +223,10 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
         // Find or create session
         const { data: existingSession, error: sessionError } = await (supabase
-          .from('gauss_practice_sessions') as any)
+          .from('gauss_contest_sessions') as any)
           .select('*')
           .eq('user_id', user.id)
-          .eq('practice_set_id', ps.id)
+          .eq('contest_id', c.id)
           .eq('status', 'in_progress')
           .order('started_at', { ascending: false })
           .limit(1)
@@ -234,12 +236,12 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
         if (sessionError || !existingSession) {
           // Create new session
-          console.log('Creating new practice session for user:', user.id)
+          console.log('Creating new contest session for user:', user.id)
           const { data: newSession, error: createError } = await (supabase
-            .from('gauss_practice_sessions') as any)
+            .from('gauss_contest_sessions') as any)
             .insert({
               user_id: user.id,
-              practice_set_id: ps.id,
+              contest_id: c.id,
               status: 'in_progress',
               current_question_number: 1,
               total_questions: qData.length,
@@ -253,11 +255,11 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
           if (createError) {
             console.error('Session creation error:', createError)
-            throw new Error(`Failed to create practice session: ${createError.message}`)
+            throw new Error(`Failed to create contest session: ${createError.message}`)
           }
 
           if (!newSession) {
-            throw new Error('Failed to create practice session: No data returned')
+            throw new Error('Failed to create contest session: No data returned')
           }
 
           console.log('Session created:', newSession.id)
@@ -273,7 +275,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
         const initialStates = new Map<string, QuestionState>()
         questionsWithSolutions.forEach((q) => {
           initialStates.set(q.id, {
-            practice_question_number: q.practice_question_number,
+            contest_question_number: q.contest_question_number,
             selected_answer: null,
             status: 'unanswered',
             wrong_answers: [],
@@ -293,7 +295,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
             const question = questionsWithSolutions.find(q => q.id === attempt.question_id)
             if (question) {
               initialStates.set(attempt.question_id, {
-                practice_question_number: question.practice_question_number,
+                contest_question_number: question.contest_question_number,
                 selected_answer: attempt.selected_answer as AnswerChoice | null,
                 status: (attempt.status as QuestionState['status']) || 'unanswered',
                 wrong_answers: (attempt.wrong_answers || []) as AnswerChoice[],
@@ -322,7 +324,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     }
 
     fetchData()
-  }, [setCode, user?.id])
+  }, [contestCode, user?.id])
 
   // Save attempt to database
   const saveAttempt = useCallback(async (
@@ -400,7 +402,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
 
     console.log('Updating session:', sessionId, updates)
     const { error } = await (supabase
-      .from('gauss_practice_sessions') as any)
+      .from('gauss_contest_sessions') as any)
       .update(updates)
       .eq('id', sessionId)
 
@@ -424,7 +426,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   }, [updateSession])
 
   // Calculate progress
-  const progress = useMemo((): PracticeProgress => {
+  const progress = useMemo((): ContestProgress => {
     const states = Array.from(questionStates.values())
     return {
       total: states.length,
@@ -439,7 +441,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   const currentQuestion = questions[currentQuestionIndex]
   const currentState = currentQuestion
     ? questionStates.get(currentQuestion.id) || {
-        practice_question_number: currentQuestion.practice_question_number,
+        contest_question_number: currentQuestion.contest_question_number,
         selected_answer: null,
         status: 'unanswered' as const,
         wrong_answers: [],
@@ -617,13 +619,13 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   }, [questions, questionStates, goToQuestion])
 
   const handleRestart = useCallback(async () => {
-    if (!user?.id || !practiceSetId) {
-      console.error('Cannot restart: missing user or practiceSetId')
+    if (!user?.id || !contestId) {
+      console.error('Cannot restart: missing user or contestId')
       alert('Unable to restart. Please refresh the page.')
       return
     }
 
-    console.log('Restarting practice...')
+    console.log('Restarting contest...')
 
     // Mark current session as abandoned (not completed)
     if (sessionId) {
@@ -634,10 +636,10 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     // Create new session
     console.log('Creating new session...')
     const { data: newSession, error: createError } = await (supabase
-      .from('gauss_practice_sessions') as any)
+      .from('gauss_contest_sessions') as any)
       .insert({
         user_id: user.id,
-        practice_set_id: practiceSetId,
+        contest_id: contestId,
         status: 'in_progress',
         current_question_number: 1,
         total_questions: questions.length,
@@ -668,7 +670,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     const resetStates = new Map<string, QuestionState>()
     questions.forEach((q) => {
       resetStates.set(q.id, {
-        practice_question_number: q.practice_question_number,
+        contest_question_number: q.contest_question_number,
         selected_answer: null,
         status: 'unanswered',
         wrong_answers: [],
@@ -683,7 +685,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
     if (questions[0]?.question_pdf_page) {
       setPdfPage(questions[0].question_pdf_page)
     }
-  }, [user?.id, practiceSetId, sessionId, questions, updateSession])
+  }, [user?.id, contestId, sessionId, questions, updateSession])
 
   const handlePdfPageChange = (page: number) => {
     setPdfPage(page)
@@ -698,7 +700,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading practice set...</p>
+          <p className="text-gray-600">Loading contest...</p>
         </div>
       </div>
     )
@@ -739,8 +741,19 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
   return (
     <div className="h-screen flex flex-col bg-gray-100 p-3 gap-2">
       {/* Header */}
-      <div className="flex-shrink-0">
-        <UserHeader />
+      <div className="flex-shrink-0 flex items-center gap-3">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft size={24} className="text-gray-600" />
+          </button>
+        )}
+        <div className="flex-1">
+          <UserHeader />
+        </div>
       </div>
 
       {/* Main Content */}
@@ -772,7 +785,7 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
         {/* Answer Card - Bottom */}
         <div className="flex-shrink-0">
           <AnswerCard
-            currentQuestionNumber={currentQuestion.practice_question_number}
+            currentQuestionNumber={currentQuestion.contest_question_number}
             totalQuestions={questions.length}
             questionState={currentState}
             onSelectAnswer={handleSelectAnswer}
@@ -793,8 +806,8 @@ export function PracticeScreen({ setCode }: PracticeScreenProps) {
               solution={currentQuestion.solution}
               isOpen={coachingOpen}
               onToggle={toggleCoaching}
-              setCode={setCode}
-              practiceQuestionNumber={currentQuestion.practice_question_number}
+              contestCode={contestCode}
+              contestQuestionNumber={currentQuestion.contest_question_number}
             />
           </div>
         </div>

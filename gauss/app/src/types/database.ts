@@ -1,24 +1,25 @@
 export interface Database {
   public: {
     Tables: {
-      gauss_practice_sets: {
+      gauss_contests: {
         Row: {
           id: string
-          set_code: string
+          contest_code: string
           title: string
           grade: number
           source_type: string | null
           question_pdf_filename: string | null
           solution_pdf_filename: string | null
           description: string | null
+          display_order: number
           created_at: string
         }
       }
       gauss_questions: {
         Row: {
           id: string
-          practice_set_id: string
-          practice_question_number: number
+          contest_id: string
+          contest_question_number: number
           source_year: number | null
           source_grade: number | null
           source_question_number: number | null
@@ -47,11 +48,11 @@ export interface Database {
           updated_at: string
         }
       }
-      gauss_practice_sessions: {
+      gauss_contest_sessions: {
         Row: {
           id: string
           user_id: string
-          practice_set_id: string
+          contest_id: string
           status: 'in_progress' | 'completed' | 'abandoned'
           current_question_number: number
           total_questions: number
@@ -66,7 +67,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          practice_set_id: string
+          contest_id: string
           status?: 'in_progress' | 'completed' | 'abandoned'
           current_question_number?: number
           total_questions?: number
@@ -81,7 +82,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
-          practice_set_id?: string
+          contest_id?: string
           status?: 'in_progress' | 'completed' | 'abandoned'
           current_question_number?: number
           total_questions?: number
@@ -154,17 +155,56 @@ export interface Database {
   }
 }
 
-export interface PracticeSet {
+export interface Contest {
   id: string
-  set_code: string
+  contest_code: string
   title: string
   grade: number
   question_pdf_filename: string | null
+  display_order: number
+}
+
+export interface ContestSession {
+  id: string
+  user_id: string
+  contest_id: string
+  status: 'in_progress' | 'completed' | 'abandoned'
+  current_question_number: number
+  total_questions: number
+  correct_count: number
+  wrong_count: number
+  skipped_count: number
+  flagged_count: number
+  started_at: string
+  completed_at: string | null
+}
+
+export interface ContestWithSession extends Contest {
+  session?: ContestSession | null
+}
+
+export interface DashboardStats {
+  contestsStarted: number
+  contestsCompleted: number
+  currentInProgress: string | null
+  totalCorrect: number
+  totalWrong: number
+  totalSkipped: number
+  totalFlagged: number
+  averageScore: number
+}
+
+export interface TopicPerformance {
+  topic: string
+  attempted_count: number
+  correct_count: number
+  wrong_count: number
+  accuracy_rate: number
 }
 
 export interface Question {
   id: string
-  practice_question_number: number
+  contest_question_number: number
   correct_answer: 'A' | 'B' | 'C' | 'D' | 'E'
   short_problem_summary: string | null
   question_pdf_page: number | null
@@ -207,14 +247,14 @@ export type AnswerChoice = 'A' | 'B' | 'C' | 'D' | 'E'
 export type QuestionStatus = 'unanswered' | 'correct' | 'wrong' | 'skipped' | 'flagged'
 
 export interface QuestionState {
-  practice_question_number: number
+  contest_question_number: number
   selected_answer: AnswerChoice | null
   status: QuestionStatus
   wrong_answers: AnswerChoice[]
   flagged: boolean
 }
 
-export interface PracticeProgress {
+export interface ContestProgress {
   total: number
   answered: number
   correct: number

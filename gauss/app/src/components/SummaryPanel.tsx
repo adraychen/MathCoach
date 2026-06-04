@@ -1,8 +1,8 @@
 import { CheckCircle, XCircle, SkipForward, Flag, RotateCcw } from 'lucide-react'
-import type { PracticeProgress } from '../types/database'
+import type { ContestProgress } from '../types/database'
 
 interface SummaryPanelProps {
-  progress: PracticeProgress
+  progress: ContestProgress
   onRestart: () => void
   onReviewFlagged: () => void
   onReviewWrong: () => void
@@ -16,7 +16,7 @@ export function SummaryPanel({ progress, onRestart, onReviewFlagged, onReviewWro
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6 max-w-md mx-auto">
       <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">
-        Practice Complete
+        Contest Complete
       </h2>
 
       {/* Score */}

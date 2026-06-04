@@ -12,7 +12,7 @@
 
 CREATE TABLE IF NOT EXISTS gauss_coaching_plans (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_question_id uuid NOT NULL REFERENCES gauss_source_questions(id) ON DELETE CASCADE,
+    source_question_id text NOT NULL REFERENCES gauss_source_questions(id) ON DELETE CASCADE,
 
     -- First step guidance for stuck coaching
     first_step_prompt text,
@@ -32,9 +32,6 @@ CREATE TABLE IF NOT EXISTS gauss_coaching_plans (
     -- Adaptive guidance rules (free text for question-specific behavior)
     adaptive_guidance_rules text,
 
-    -- Review status (prefer reviewed plans but not required for MVP)
-    is_reviewed boolean DEFAULT false,
-
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now(),
 
@@ -48,9 +45,6 @@ CREATE TABLE IF NOT EXISTS gauss_coaching_plans (
 
 CREATE INDEX IF NOT EXISTS idx_gauss_coaching_plans_source_question_id
     ON gauss_coaching_plans(source_question_id);
-
-CREATE INDEX IF NOT EXISTS idx_gauss_coaching_plans_is_reviewed
-    ON gauss_coaching_plans(is_reviewed);
 
 -- ============================================
 -- 3. Auto-update updated_at trigger
@@ -85,7 +79,6 @@ CREATE TRIGGER trigger_gauss_coaching_plans_updated_at
 --   - key_concepts: Array of concepts the student needs to understand
 --   - common_misconceptions: Array of mistakes to watch for
 --   - adaptive_guidance_rules: Free text for question-specific coach behavior
---   - is_reviewed: Whether the plan has been reviewed for quality
 --
 -- The coach does NOT force students through expected_reasoning_steps in order.
 -- It adapts based on student responses:

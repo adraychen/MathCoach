@@ -18,8 +18,8 @@ This keeps the Waterloo-style experience familiar for students while avoiding th
 
 Completed so far:
 
-- `G7gauss1` practice set inserted into Supabase.
-- 25 practice questions inserted with source-year/source-question mapping.
+- `G7gauss1` contest inserted into Supabase.
+- 25 contest questions inserted with source-year/source-question mapping.
 - 25 PSG solution records inserted.
 - Frontend displays the scrollable PDF question paper.
 - Compact answer card works.
@@ -28,12 +28,12 @@ Completed so far:
 - Wrong answers stay on the same question and show a cross on the selected wrong letter.
 - Wrong answers do **not** reveal the correct answer.
 - Skip and Flag auto-advance.
-- Student practice sessions and attempts are saved to Supabase.
+- Student contest sessions and attempts are saved to Supabase.
 - Admin account was bootstrapped.
 - Admin portal is accessible.
 - Admin can create teacher accounts.
 - Admin can create student accounts and assign them to a teacher.
-- Students can log in and access the practice paper.
+- Students can log in and access the contest paper.
 - `profiles` and `student_teacher_assignments` tables are created for role-based access.
 - `gauss_source_questions` is used as the source-question / official-solution table.
 - `gauss_solutions` was cleaned to only store PSG solution text. Coaching availability is determined dynamically from `gauss_source_questions`.
@@ -96,9 +96,9 @@ Forgot-password behavior:
 - If the login identifier is a username/name, show a message telling the student to contact the teacher or administrator.
 - Do not reveal whether an account exists.
 
-## Practice Screen Layout
+## Contest Screen Layout
 
-The current student practice screen uses a full PDF viewer instead of cropped question images.
+The current student contest screen uses a full PDF viewer instead of cropped question images.
 
 ```text
 +--------------------------------------------------+--------------------+
@@ -133,7 +133,7 @@ Wrong answers must not reveal the correct answer.
 
 Coaching availability is determined dynamically by checking if a matching source question exists in `gauss_source_questions` with an `official_solution`.
 
-The matching logic uses the practice question's source mapping:
+The matching logic uses the contest question's source mapping:
 
 ```text
 gauss_questions.source_year = gauss_source_questions.year
@@ -142,7 +142,7 @@ gauss_questions.source_question_number = gauss_source_questions.question_number
 ```
 
 Coaching is available when:
-1. The practice question has `source_year`, `source_grade`, and `source_question_number` set
+1. The contest question has `source_year`, `source_grade`, and `source_question_number` set
 2. A matching record exists in `gauss_source_questions`
 3. That source question has `official_solution` (not null)
 
@@ -279,7 +279,7 @@ A separate review-solution feature may be added later after a question or practi
 
 ## Source Question Mapping
 
-Each practice question stores original Waterloo source information:
+Each contest question stores original Waterloo source information:
 
 ```text
 source_year
@@ -290,7 +290,7 @@ source_question_number
 Example:
 
 ```text
-G7gauss1 practice Q11
+G7gauss1 contest Q11
 → source_year = 2022
 → source_grade = 7
 → source_question_number = 11
@@ -318,13 +318,13 @@ waterloo_gauss_g7_2022_q11
 
 ## Database Tables
 
-### Practice content
+### Contest content
 
 | Table | Purpose |
 |---|---|
-| `gauss_practice_sets` | Practice set metadata, including set code and PDF filename |
-| `gauss_questions` | Practice-set question metadata, source mapping, topics, correct answer |
-| `gauss_solutions` | PSG solution text for each practice question |
+| `gauss_contests` | Contest metadata, including contest code and PDF filename |
+| `gauss_questions` | Contest question metadata, source mapping, topics, correct answer |
+| `gauss_solutions` | PSG solution text for each contest question |
 | `gauss_source_questions` | Source Waterloo/CEMC questions, official solutions, reasoning metadata (coaching source of truth) |
 | `gauss_coaching_plans` | Adaptive coaching plans keyed by source_question_id (optional, enhances coaching) |
 
@@ -332,7 +332,7 @@ waterloo_gauss_g7_2022_q11
 
 | Table | Purpose |
 |---|---|
-| `gauss_practice_sessions` | One student's session for one practice set |
+| `gauss_contest_sessions` | One student's session for one contest |
 | `gauss_attempts` | Student answer, status, wrong answers, skip/flag state, timing |
 
 ### Roles and accounts
@@ -349,16 +349,16 @@ waterloo_gauss_g7_2022_q11
 | `gauss_student_primary_topic_performance` | Aggregated student performance by primary topic (unnested from topic arrays) |
 | `gauss_student_secondary_topic_performance` | Aggregated student performance by secondary topic (unnested from topic arrays) |
 
-These views join `gauss_practice_sessions` → `gauss_attempts` → `gauss_questions` → `gauss_practice_sets` and unnest the topic arrays so each question contributes to each of its topics separately. Useful for identifying weak topics and generating progress reports.
+These views join `gauss_contest_sessions` → `gauss_attempts` → `gauss_questions` → `gauss_contests` and unnest the topic arrays so each question contributes to each of its topics separately. Useful for identifying weak topics and generating progress reports.
 
 ## Important Fields
 
-### `gauss_practice_sets`
+### `gauss_contests`
 
-Practice set fields:
+Contest fields:
 
 - `id`
-- `set_code` (unique identifier like G7gauss1)
+- `contest_code` (unique identifier like G7gauss1)
 - `title`
 - `grade`
 - `source_type`
@@ -371,8 +371,8 @@ Practice set fields:
 
 Still important:
 
-- `practice_set_id`
-- `practice_question_number`
+- `contest_id`
+- `contest_question_number`
 - `source_year`
 - `source_grade`
 - `source_question_number`
@@ -467,19 +467,18 @@ Adaptive coaching plan fields (optional, keyed by `source_question_id`):
 - `key_concepts` (array of concepts the student should understand)
 - `common_misconceptions` (array of mistakes to watch for)
 - `adaptive_guidance_rules` (text rules for adaptive behavior)
-- `is_reviewed` (boolean, prefer reviewed plans but not required)
 - `created_at`
 - `updated_at`
 
 The coaching plan enhances but does not replace the base coaching logic. If no plan exists for a source question, the coach falls back to using the official solution and existing prompt rules.
 
-### `gauss_practice_sessions`
+### `gauss_contest_sessions`
 
 Session tracking fields:
 
 - `id`
 - `user_id`
-- `practice_set_id`
+- `contest_id`
 - `status` (in_progress, completed, abandoned)
 - `current_question_number`
 - `total_questions`
@@ -656,12 +655,13 @@ guass/
     ├── 008_enable_coaching_for_2016_2025_sources.sql
     ├── 009_clean_gauss_solutions_schema.sql
     ├── 010_drop_redundant_coaching_fields.sql
-    └── 011_create_gauss_coaching_plans.sql
+    ├── 011_create_gauss_coaching_plans.sql
+    └── 012_rename_practice_to_contest.sql
 ```
 
 ## Data Import Workflow
 
-For new practice sets:
+For new contests:
 
 1. Download or create the CEMC Problem Set Generator question PDF and solution PDF.
 2. Name files consistently, for example:
@@ -676,7 +676,7 @@ G7gauss2-psg-metadata.json
 3. Use NotebookLM to extract metadata from the PSG solution PDF.
 4. ChatGPT reviews NotebookLM output before Claude Code creates JSON.
 5. Claude Code converts reviewed metadata to JSON/SQL.
-6. Insert practice set, questions, and PSG solutions into Supabase.
+6. Insert contest, questions, and PSG solutions into Supabase.
 7. Match source questions by year/grade/question number against `gauss_source_questions`.
 8. Populate `gauss_solutions.coaching_source_id` from the matching `gauss_source_questions.id`.
 9. Enable coaching only where source solution content exists.

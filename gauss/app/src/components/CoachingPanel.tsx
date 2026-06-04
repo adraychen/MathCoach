@@ -7,8 +7,8 @@ interface CoachingPanelProps {
   solution: Solution | null
   isOpen: boolean
   onToggle: () => void
-  setCode: string
-  practiceQuestionNumber: number
+  contestCode: string
+  contestQuestionNumber: number
 }
 
 interface ChatMessage {
@@ -28,8 +28,8 @@ export function CoachingPanel({
   solution,
   isOpen,
   onToggle,
-  setCode,
-  practiceQuestionNumber,
+  contestCode,
+  contestQuestionNumber,
 }: CoachingPanelProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -49,7 +49,7 @@ export function CoachingPanel({
     setError(null)
     setHasFetched(false)
     setStudentInput('')
-  }, [practiceQuestionNumber])
+  }, [contestQuestionNumber])
 
   useEffect(() => {
     if (isOpen && coachingAvailable && !hasFetched && !loading) {
@@ -82,8 +82,8 @@ export function CoachingPanel({
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          set_code: setCode,
-          practice_question_number: practiceQuestionNumber,
+          contest_code: contestCode,
+          contest_question_number: contestQuestionNumber,
           coaching_trigger: trigger,
           student_message: studentMessage,
           conversation_history: conversationHistory,

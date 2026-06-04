@@ -543,27 +543,34 @@ export async function handler(event) {
     };
   }
 
+  // Support both old (set_code, practice_question_number) and new (contest_code, contest_question_number) naming
   const {
+    contest_code,
     set_code,
+    contest_question_number,
     practice_question_number,
     coaching_trigger,
     student_message = '',
     conversation_history = [],
   } = body;
 
-  if (!set_code || typeof set_code !== 'string') {
+  // Use new naming internally, fall back to old for backward compatibility
+  const contestCode = contest_code || set_code;
+  const contestQuestionNumber = contest_question_number || practice_question_number;
+
+  if (!contestCode || typeof contestCode !== 'string') {
     return {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'set_code is required' }),
+      body: JSON.stringify({ error: 'contest_code is required' }),
     };
   }
 
-  if (!practice_question_number || typeof practice_question_number !== 'number') {
+  if (!contestQuestionNumber || typeof contestQuestionNumber !== 'number') {
     return {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'practice_question_number is required' }),
+      body: JSON.stringify({ error: 'contest_question_number is required' }),
     };
   }
 
@@ -575,32 +582,32 @@ export async function handler(event) {
     };
   }
 
-  const { data: practiceSet, error: psError } = await supabase
-    .from('gauss_practice_sets')
+  const { data: contest, error: contestError } = await supabase
+    .from('gauss_contests')
     .select('id')
-    .eq('set_code', set_code)
+    .eq('contest_code', contestCode)
     .single();
 
-  if (psError || !practiceSet) {
+  if (contestError || !contest) {
     return {
       statusCode: 404,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: `Practice set "${set_code}" not found` }),
+      body: JSON.stringify({ error: `Contest "${contestCode}" not found` }),
     };
   }
 
   const { data: question, error: qError } = await supabase
     .from('gauss_questions')
     .select('id, short_problem_summary, primary_topics, secondary_topics, difficulty_band, correct_answer, source_year, source_grade, source_question_number')
-    .eq('practice_set_id', practiceSet.id)
-    .eq('practice_question_number', practice_question_number)
+    .eq('contest_id', contest.id)
+    .eq('contest_question_number', contestQuestionNumber)
     .single();
 
   if (qError || !question) {
     return {
       statusCode: 404,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: `Question ${practice_question_number} not found` }),
+      body: JSON.stringify({ error: `Question ${contestQuestionNumber} not found` }),
     };
   }
 
@@ -643,16 +650,12 @@ export async function handler(event) {
 
   const { data: coachingPlan, error: planError } = await supabase
     .from('gauss_coaching_plans')
-    .select('first_step_prompt, coaching_goal, expected_reasoning_steps, key_concepts, common_misconceptions, adaptive_guidance_rules, is_reviewed')
+    .select('first_step_prompt, coaching_goal, expected_reasoning_steps, key_concepts, common_misconceptions, adaptive_guidance_rules')
     .eq('source_question_id', sourceQuestionId)
     .single();
 
   const hasCoachingPlan = !planError && coachingPlan;
   console.log(`[Coaching] Coaching plan found: ${hasCoachingPlan}`);
-
-  if (hasCoachingPlan && coachingPlan.is_reviewed !== undefined) {
-    console.log(`[Coaching] Plan is_reviewed: ${coachingPlan.is_reviewed}`);
-  }
 
   const context = {
     short_problem_summary: question.short_problem_summary,

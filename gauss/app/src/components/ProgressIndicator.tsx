@@ -1,8 +1,8 @@
 import { Flag, CheckCircle, SkipForward } from 'lucide-react'
-import type { PracticeProgress } from '../types/database'
+import type { ContestProgress } from '../types/database'
 
 interface ProgressIndicatorProps {
-  progress: PracticeProgress
+  progress: ContestProgress
   onReviewFlagged: () => void
 }
 

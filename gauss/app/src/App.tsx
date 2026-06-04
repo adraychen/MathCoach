@@ -4,7 +4,7 @@ import { LoginScreen } from './components/LoginScreen'
 import { ResetPasswordScreen } from './components/ResetPasswordScreen'
 import { AdminPortal } from './pages/AdminPortal'
 import { TeacherPortal } from './pages/TeacherPortal'
-import { StudentPracticePortal } from './pages/StudentPracticePortal'
+import { StudentDashboard } from './components/StudentDashboard'
 import { Loader2 } from 'lucide-react'
 
 function ErrorScreen({ message }: { message: string }) {
@@ -73,7 +73,7 @@ function AppContent() {
     case 'teacher':
       return <TeacherPortal />
     case 'student':
-      return <StudentPracticePortal />
+      return <StudentDashboard />
     default:
       return <ErrorScreen message="Unknown account role. Please contact the administrator." />
   }
