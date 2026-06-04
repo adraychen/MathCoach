@@ -749,18 +749,6 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
     <div className="h-screen flex bg-gray-100 p-3 gap-3">
       {/* Left Main Area */}
       <div className="flex-1 flex flex-col gap-2 min-w-0">
-        {/* Back button row (only when onBack exists) */}
-        {onBack && (
-          <div className="flex-shrink-0">
-            <button
-              onClick={onBack}
-              className="p-2 hover:bg-gray-200 rounded-lg transition-colors bg-white border border-gray-200"
-              aria-label="Back to dashboard"
-            >
-              <ArrowLeft size={20} className="text-gray-600" />
-            </button>
-          </div>
-        )}
         {/* PDF Viewer */}
         <div className="flex-1 min-h-0">
           {pdfUrl ? (
@@ -795,9 +783,20 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
 
         {/* Right Side Panel - Header + Coaching + Progress */}
         <div className="w-80 flex-shrink-0 flex flex-col gap-2">
-          {/* User Header */}
-          <div className="flex-shrink-0">
-            <UserHeader />
+          {/* Back button + User Header */}
+          <div className="flex-shrink-0 flex items-center gap-2">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="p-1.5 hover:bg-gray-200 rounded transition-colors bg-white border border-gray-200"
+                aria-label="Back to dashboard"
+              >
+                <ArrowLeft size={18} className="text-gray-600" />
+              </button>
+            )}
+            <div className="flex-1">
+              <UserHeader />
+            </div>
           </div>
           {/* Coaching Panel */}
           <div className="flex-1 min-h-0">

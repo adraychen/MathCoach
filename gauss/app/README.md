@@ -137,12 +137,10 @@ The current student practice screen uses a full PDF viewer instead of cropped qu
 
 ```text
 +--------------------------------------------------+--------------------+
-| [<] (back button, optional)                      | User    Sign out   |
-+--------------------------------------------------+--------------------+
-|                                                  |                    |
-|              Scrollable PDF Viewer               |  Coaching Panel    |
+|                                                  | [<] User  Sign out |
+|              Scrollable PDF Viewer               +--------------------+
 |              (contest PDF)                       |                    |
-|                                                  |                    |
+|                                                  |  Coaching Panel    |
 |                                                  |                    |
 +--------------------------------------------------+                    |
 | Q7 / 25        A  B  C  D  E        Skip  Flag   |                    |
@@ -154,8 +152,8 @@ The current student practice screen uses a full PDF viewer instead of cropped qu
 
 Layout notes:
 
-- Header is in the right panel only, not full width.
-- Back button appears in top-left of left panel when navigating from dashboard.
+- Header and back button are in the right panel only.
+- Back button appears left of user name when navigating from dashboard.
 - Progress indicator is at the bottom of the right panel.
 - PDF viewer fills the maximum available height on the left.
 - Answer card is fixed at the bottom of the left panel.
