@@ -1,11 +1,29 @@
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import { LoginScreen } from './components/LoginScreen'
 import { ResetPasswordScreen } from './components/ResetPasswordScreen'
 import { AdminPortal } from './pages/AdminPortal'
 import { TeacherPortal } from './pages/TeacherPortal'
+import { ProgramSelection } from './components/ProgramSelection'
 import { StudentDashboard } from './components/StudentDashboard'
 import { Loader2 } from 'lucide-react'
+import type { Program } from './types/database'
+
+function StudentPortal() {
+  const [selectedProgram, setSelectedProgram] = useState<Program | null>(null)
+
+  if (!selectedProgram) {
+    return <ProgramSelection onSelect={setSelectedProgram} />
+  }
+
+  return (
+    <StudentDashboard
+      program={selectedProgram}
+      onBackToPrograms={() => setSelectedProgram(null)}
+    />
+  )
+}
 
 function ErrorScreen({ message }: { message: string }) {
   const { signOut } = useAuth()
@@ -73,7 +91,7 @@ function AppContent() {
     case 'teacher':
       return <TeacherPortal />
     case 'student':
-      return <StudentDashboard />
+      return <StudentPortal />
     default:
       return <ErrorScreen message="Unknown account role. Please contact the administrator." />
   }

@@ -265,3 +265,21 @@ export interface ContestProgress {
   skipped: number
   flagged: number
 }
+
+export interface Program {
+  id: string
+  program_code: string
+  program_name: string
+  description: string | null
+  grade: number
+  program_type: string
+  active: boolean
+}
+
+export interface StudentProgramAssignment {
+  id: string
+  student_id: string
+  program_id: string
+  active: boolean
+  assigned_at: string
+}

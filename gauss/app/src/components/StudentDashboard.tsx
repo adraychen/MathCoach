@@ -4,8 +4,8 @@ import { useAuth } from '../lib/auth'
 import { UserHeader } from './UserHeader'
 import { ContestSelection } from './ContestSelection'
 import { PracticeScreen } from './PracticeScreen'
-import { BookOpen, Play, PlayCircle, List, CheckCircle, XCircle, SkipForward, Flag, TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
-import type { Contest, ContestSession, DashboardStats, TopicPerformance } from '../types/database'
+import { BookOpen, Play, PlayCircle, List, CheckCircle, XCircle, SkipForward, Flag, TrendingUp, TrendingDown, Loader2, Home } from 'lucide-react'
+import type { Contest, ContestSession, DashboardStats, TopicPerformance, Program } from '../types/database'
 
 type View = 'dashboard' | 'contest-selection' | 'contest'
 
@@ -32,7 +32,12 @@ interface SessionRow {
   completed_at: string | null
 }
 
-export function StudentDashboard() {
+interface StudentDashboardProps {
+  program: Program
+  onBackToPrograms?: () => void
+}
+
+export function StudentDashboard({ program, onBackToPrograms }: StudentDashboardProps) {
   const { user } = useAuth()
   const [view, setView] = useState<View>('dashboard')
   const [selectedContestCode, setSelectedContestCode] = useState<string | null>(null)
@@ -45,22 +50,23 @@ export function StudentDashboard() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && program?.id) {
       fetchDashboardData()
     }
-  }, [user?.id])
+  }, [user?.id, program?.id])
 
   const fetchDashboardData = async () => {
-    if (!user?.id) return
+    if (!user?.id || !program?.id) return
 
     setLoading(true)
     setError(null)
 
     try {
-      // Fetch contests
+      // Fetch contests filtered by program grade and type
       const { data: contestsData, error: contestsError } = await supabase
         .from('gauss_contests')
         .select('*')
+        .eq('grade', program.grade)
         .order('contest_number', { ascending: true })
 
       if (contestsError) throw contestsError
@@ -274,15 +280,31 @@ export function StudentDashboard() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-4xl mx-auto p-4">
-        <UserHeader />
+        {/* Header with back button */}
+        <div className="flex items-center gap-3">
+          {onBackToPrograms && (
+            <button
+              onClick={onBackToPrograms}
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors bg-white border border-gray-200"
+              aria-label="Back to programs"
+            >
+              <Home size={20} className="text-gray-600" />
+            </button>
+          )}
+          <div className="flex-1">
+            <UserHeader />
+          </div>
+        </div>
 
         {/* Program Card */}
-        <div className="mt-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-6 text-white">
+        <div className="mt-4 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-6 text-white">
           <div className="flex items-center gap-3">
             <BookOpen size={32} />
             <div>
-              <h2 className="text-2xl font-bold">Grade 7 Gauss Contest</h2>
-              <p className="text-blue-100">Waterloo Mathematics Competition Practice</p>
+              <h2 className="text-2xl font-bold">{program.program_name}</h2>
+              {program.description && (
+                <p className="text-blue-100">{program.description}</p>
+              )}
             </div>
           </div>
         </div>
