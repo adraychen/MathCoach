@@ -104,29 +104,45 @@ function buildTopicContext(context) {
 }
 
 function buildPrivateContext(context) {
+  // Build solution context with priority: official_solution > psg_solution_text > coaching_plan_steps
+  let solutionContext = '';
+  if (context.official_solution) {
+    solutionContext = `Official solution, for private reference only:
+${context.official_solution}`;
+  } else if (context.psg_solution_text) {
+    solutionContext = `PSG solution (fallback), for private reference only:
+${context.psg_solution_text}`;
+  } else if (context.coaching_plan_steps && context.coaching_plan_steps.length > 0) {
+    const steps = Array.isArray(context.coaching_plan_steps)
+      ? context.coaching_plan_steps.map((s, i) => `${i + 1}. ${s}`).join('\n')
+      : context.coaching_plan_steps;
+    solutionContext = `Expected reasoning steps (fallback), for private reference only:
+${steps}`;
+  } else {
+    solutionContext = 'Solution: Not available. Use correct answer and options to guide.';
+  }
+
   return `
 Question:
 ${context.question_text || context.short_problem_summary || 'Question text not available'}
 
+Answer options:
+${context.options ? Object.entries(context.options).map(([k, v]) => `${k}: ${v}`).join('\n') : 'Not available'}
+
 ${buildTopicContext(context) ? `Curriculum context:\n${buildTopicContext(context)}\n` : ''}
 ${context.visual_description ? `Visual description, if needed:\n${context.visual_description}\n` : ''}
 ${context.archetype ? `Reasoning style, optional:\n${context.archetype}\n` : ''}
-Reasoning summary, private:
-${context.reasoning_summary || 'Not available'}
-
-Solution pattern, private:
-${context.solution_pattern || 'Not available'}
-
+${context.reasoning_summary ? `Reasoning summary, private:\n${context.reasoning_summary}\n` : ''}
+${context.solution_pattern ? `Solution pattern, private:\n${context.solution_pattern}\n` : ''}
 Correct answer letter, private:
 ${context.correct_answer || 'Not available'}
 
 Correct option text, private:
 ${getCorrectOptionText(context) || 'Not available'}
 
-Official solution, for private reference only:
-${context.official_solution || 'Not available'}
+${solutionContext}
 
-Use the official solution only to know the correct path. Do not reveal it, even if the student asks for the full solution. Guide the student with questions instead.
+Use the solution only to know the correct path. Do not reveal it, even if the student asks for the full solution. Guide the student with questions instead.
 `;
 }
 
@@ -596,9 +612,10 @@ export async function handler(event) {
     };
   }
 
+  // Query gauss_questions with fallback fields (question_text, options)
   const { data: question, error: qError } = await supabase
     .from('gauss_questions')
-    .select('id, short_problem_summary, primary_topics, secondary_topics, difficulty_band, correct_answer, source_year, source_grade, source_question_number')
+    .select('id, short_problem_summary, primary_topics, secondary_topics, difficulty_band, correct_answer, source_year, source_grade, source_question_number, question_text, options')
     .eq('contest_id', contest.id)
     .eq('contest_question_number', contestQuestionNumber)
     .single();
@@ -611,68 +628,96 @@ export async function handler(event) {
     };
   }
 
-  // Check if source question exists with official solution
-  // Coaching is available if gauss_source_questions has a matching record with official_solution
-  if (!question.source_year || !question.source_grade || !question.source_question_number) {
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ available: false, message: 'Coaching is not available for this question yet.' }),
-    };
+  // Try to get source question if source mapping exists
+  let sourceQuestion = null;
+  if (question.source_year && question.source_grade && question.source_question_number) {
+    const { data: srcData, error: srcError } = await supabase
+      .from('gauss_source_questions')
+      .select('id, question_text, options, correct_answer, official_solution, reasoning_summary, solution_pattern, archetype, visual_required, visual_description')
+      .eq('year', question.source_year)
+      .eq('grade', question.source_grade)
+      .eq('question_number', question.source_question_number)
+      .single();
+
+    if (!srcError && srcData) {
+      sourceQuestion = srcData;
+    }
   }
 
-  const { data: sourceQuestion, error: srcError } = await supabase
-    .from('gauss_source_questions')
-    .select('id, question_text, options, correct_answer, official_solution, reasoning_summary, solution_pattern, archetype, visual_required, visual_description')
-    .eq('year', question.source_year)
-    .eq('grade', question.source_grade)
-    .eq('question_number', question.source_question_number)
-    .single();
-
-  if (srcError || !sourceQuestion || !sourceQuestion.official_solution) {
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ available: false, message: 'Coaching is not available for this question yet.' }),
-    };
-  }
-
-  // Get solution for PSG text (optional, not required for coaching)
+  // Get PSG solution (fallback reasoning support)
   const { data: solution } = await supabase
     .from('gauss_solutions')
     .select('psg_solution_text, psg_solution_summary')
     .eq('question_id', question.id)
     .single();
 
-  // Query coaching plan by source_question_id
-  const sourceQuestionId = sourceQuestion.id;
-  console.log(`[Coaching] Source question ID: ${sourceQuestionId}`);
+  // Determine if coaching is available
+  // Coaching requires at least one of:
+  // 1. Source question with official_solution
+  // 2. Fallback question_text + options in gauss_questions
+  // 3. PSG solution text
+  const hasSourceSolution = sourceQuestion?.official_solution;
+  const hasFallbackQuestion = question.question_text && question.options;
+  const hasPsgSolution = solution?.psg_solution_text;
 
-  const { data: coachingPlan, error: planError } = await supabase
-    .from('gauss_coaching_plans')
-    .select('first_step_prompt, coaching_goal, expected_reasoning_steps, key_concepts, common_misconceptions, adaptive_guidance_rules')
-    .eq('source_question_id', sourceQuestionId)
-    .single();
+  if (!hasSourceSolution && !hasFallbackQuestion && !hasPsgSolution) {
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ available: false, message: 'Coaching is not available for this question yet.' }),
+    };
+  }
 
-  const hasCoachingPlan = !planError && coachingPlan;
+  // Query coaching plan by source_question_id (if source question exists)
+  const sourceQuestionId = sourceQuestion?.id || null;
+  console.log(`[Coaching] Source question ID: ${sourceQuestionId}, fallback mode: ${!hasSourceSolution}`);
+
+  // Query coaching plan by source_question_id (only if source question exists)
+  let coachingPlan = null;
+  if (sourceQuestionId) {
+    const { data: planData, error: planError } = await supabase
+      .from('gauss_coaching_plans')
+      .select('first_step_prompt, coaching_goal, expected_reasoning_steps, key_concepts, common_misconceptions, adaptive_guidance_rules')
+      .eq('source_question_id', sourceQuestionId)
+      .single();
+
+    if (!planError && planData) {
+      coachingPlan = planData;
+    }
+  }
+
+  const hasCoachingPlan = !!coachingPlan;
   console.log(`[Coaching] Coaching plan found: ${hasCoachingPlan}`);
 
+  // Build context with source priority:
+  // 1. question_text: gauss_source_questions.question_text > gauss_questions.question_text
+  // 2. options: gauss_source_questions.options > gauss_questions.options
+  // 3. solution: gauss_source_questions.official_solution > gauss_solutions.psg_solution_text
+  // 4. correct_answer: gauss_questions.correct_answer (primary source for validation)
   const context = {
     short_problem_summary: question.short_problem_summary,
     primary_topics: question.primary_topics,
     secondary_topics: question.secondary_topics,
     difficulty_band: question.difficulty_band,
-    correct_answer: question.correct_answer || sourceQuestion.correct_answer,
+    // Correct answer from gauss_questions (authoritative)
+    correct_answer: question.correct_answer,
+    // PSG solution as fallback reasoning
     psg_solution_text: solution?.psg_solution_text || null,
     psg_solution_summary: solution?.psg_solution_summary || null,
-    question_text: sourceQuestion.question_text,
-    options: sourceQuestion.options,
-    official_solution: sourceQuestion.official_solution,
-    reasoning_summary: sourceQuestion.reasoning_summary,
-    solution_pattern: sourceQuestion.solution_pattern,
-    archetype: sourceQuestion.archetype,
-    visual_required: sourceQuestion.visual_required,
-    visual_description: sourceQuestion.visual_description,
+    // Question text: source > fallback
+    question_text: sourceQuestion?.question_text || question.question_text || null,
+    // Options: source > fallback
+    options: sourceQuestion?.options || question.options || null,
+    // Official solution (source only, PSG is separate)
+    official_solution: sourceQuestion?.official_solution || null,
+    // Reasoning metadata from source (if available)
+    reasoning_summary: sourceQuestion?.reasoning_summary || null,
+    solution_pattern: sourceQuestion?.solution_pattern || null,
+    archetype: sourceQuestion?.archetype || null,
+    visual_required: sourceQuestion?.visual_required || null,
+    visual_description: sourceQuestion?.visual_description || null,
+    // Coaching plan reasoning steps as fallback when no official solution
+    coaching_plan_steps: coachingPlan?.expected_reasoning_steps || null,
   };
 
   let coachMessage;

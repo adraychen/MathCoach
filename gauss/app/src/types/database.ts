@@ -7,12 +7,13 @@ export interface Database {
           contest_code: string
           title: string
           grade: number
-          source_type: string | null
           question_pdf_filename: string | null
           solution_pdf_filename: string | null
           description: string | null
-          display_order: number
+          contest_number: number
+          active: boolean
           created_at: string
+          updated_at: string
         }
       }
       gauss_questions: {
@@ -27,6 +28,8 @@ export interface Database {
           secondary_topics: string[]
           correct_answer: 'A' | 'B' | 'C' | 'D' | 'E'
           short_problem_summary: string | null
+          question_text: string | null
+          options: Record<string, string> | null
           question_image_url: string | null
           question_pdf_page: number | null
           crop_x: number | null
