@@ -10,7 +10,7 @@ export interface Database {
           question_pdf_filename: string | null
           solution_pdf_filename: string | null
           description: string | null
-          contest_number: number
+          display_order: number
           active: boolean
           created_at: string
           updated_at: string
@@ -164,7 +164,7 @@ export interface Contest {
   title: string
   grade: number
   question_pdf_filename: string | null
-  contest_number: number
+  display_order: number
 }
 
 export interface ContestSession {

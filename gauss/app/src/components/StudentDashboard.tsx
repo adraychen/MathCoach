@@ -15,7 +15,7 @@ interface ContestRow {
   title: string
   grade: number
   question_pdf_filename: string | null
-  contest_number: number
+  display_order: number
 }
 
 interface SessionRow {
@@ -67,7 +67,7 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
         .from('gauss_contests')
         .select('*')
         .eq('grade', program.grade)
-        .order('contest_number', { ascending: true })
+        .order('display_order', { ascending: true })
 
       if (contestsError) throw contestsError
 
@@ -78,7 +78,7 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
         title: c.title,
         grade: c.grade,
         question_pdf_filename: c.question_pdf_filename,
-        contest_number: c.contest_number || 0,
+        display_order: c.display_order || 0,
       })))
 
       // Fetch user's sessions
