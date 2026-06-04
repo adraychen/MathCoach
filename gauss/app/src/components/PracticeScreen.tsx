@@ -746,29 +746,23 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 p-3 gap-2">
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center gap-3">
+    <div className="h-screen flex bg-gray-100 p-3 gap-3">
+      {/* Left Main Area */}
+      <div className="flex-1 flex flex-col gap-2 min-w-0">
+        {/* Back button row (only when onBack exists) */}
         {onBack && (
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-            aria-label="Back to dashboard"
-          >
-            <ArrowLeft size={24} className="text-gray-600" />
-          </button>
+          <div className="flex-shrink-0">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors bg-white border border-gray-200"
+              aria-label="Back to dashboard"
+            >
+              <ArrowLeft size={20} className="text-gray-600" />
+            </button>
+          </div>
         )}
-        <div className="flex-1">
-          <UserHeader />
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex gap-3 min-h-0">
-        {/* Left Main Area */}
-        <div className="flex-1 flex flex-col gap-2 min-w-0">
-          {/* PDF Viewer - Top */}
-          <div className="flex-1 min-h-0">
+        {/* PDF Viewer */}
+        <div className="flex-1 min-h-0">
           {pdfUrl ? (
             <PDFViewer
               pdfUrl={pdfUrl}
@@ -799,9 +793,14 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
         </div>
       </div>
 
-        {/* Right Side Panel - Coaching + Progress */}
-        <div className="w-80 flex-shrink-0 flex flex-col">
-          <div className="flex-1">
+        {/* Right Side Panel - Header + Coaching + Progress */}
+        <div className="w-80 flex-shrink-0 flex flex-col gap-2">
+          {/* User Header */}
+          <div className="flex-shrink-0">
+            <UserHeader />
+          </div>
+          {/* Coaching Panel */}
+          <div className="flex-1 min-h-0">
             <CoachingPanel
               solution={currentQuestion.solution}
               isOpen={coachingOpen}
@@ -811,7 +810,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
             />
           </div>
           {/* Progress Indicator - Bottom of right panel */}
-          <div className="flex-shrink-0 mt-2 relative">
+          <div className="flex-shrink-0 relative">
             <ProgressIndicator
               progress={progress}
               onReviewFlagged={handleReviewFlagged}
@@ -823,7 +822,6 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
             )}
           </div>
         </div>
-      </div>
     </div>
   )
 }
