@@ -767,21 +767,8 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
       <div className="flex-1 flex gap-3 min-h-0">
         {/* Left Main Area */}
         <div className="flex-1 flex flex-col gap-2 min-w-0">
-          {/* Progress Indicator */}
-          <div className="flex-shrink-0 relative">
-            <ProgressIndicator
-              progress={progress}
-              onReviewFlagged={handleReviewFlagged}
-            />
-            {noFlaggedMessage && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 px-3 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-10">
-                No flagged questions yet.
-              </div>
-            )}
-          </div>
-
-        {/* PDF Viewer - Top */}
-        <div className="flex-1 min-h-0">
+          {/* PDF Viewer - Top */}
+          <div className="flex-1 min-h-0">
           {pdfUrl ? (
             <PDFViewer
               pdfUrl={pdfUrl}
@@ -812,9 +799,9 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
         </div>
       </div>
 
-        {/* Right Side Panel - Coaching */}
-        <div className="w-80 flex-shrink-0">
-          <div className="sticky top-4">
+        {/* Right Side Panel - Coaching + Progress */}
+        <div className="w-80 flex-shrink-0 flex flex-col">
+          <div className="flex-1">
             <CoachingPanel
               solution={currentQuestion.solution}
               isOpen={coachingOpen}
@@ -822,6 +809,18 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
               contestCode={contestCode}
               contestQuestionNumber={currentQuestion.contest_question_number}
             />
+          </div>
+          {/* Progress Indicator - Bottom of right panel */}
+          <div className="flex-shrink-0 mt-2 relative">
+            <ProgressIndicator
+              progress={progress}
+              onReviewFlagged={handleReviewFlagged}
+            />
+            {noFlaggedMessage && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-3 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-10">
+                No flagged questions yet.
+              </div>
+            )}
           </div>
         </div>
       </div>

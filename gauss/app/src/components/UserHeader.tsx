@@ -7,22 +7,18 @@ export function UserHeader() {
   const displayName = profile?.display_name || profile?.username || 'Student'
 
   return (
-    <div className="flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2">
-      <div className="flex items-center gap-2">
-        <h1 className="text-lg font-semibold text-gray-800">Gauss AI Coach</h1>
-      </div>
-
+    <div className="flex items-center justify-end bg-white rounded-lg shadow-sm border border-gray-200 px-3 py-1.5">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 text-sm text-gray-600">
-          <User size={16} className="text-gray-400" />
+          <User size={14} className="text-gray-400" />
           <span>{displayName}</span>
         </div>
         <button
           onClick={signOut}
-          className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
           title="Sign out"
         >
-          <LogOut size={14} />
+          <LogOut size={12} />
           Sign out
         </button>
       </div>
