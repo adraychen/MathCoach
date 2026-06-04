@@ -161,7 +161,7 @@ export interface Contest {
   title: string
   grade: number
   question_pdf_filename: string | null
-  display_order: number
+  contest_number: number
 }
 
 export interface ContestSession {

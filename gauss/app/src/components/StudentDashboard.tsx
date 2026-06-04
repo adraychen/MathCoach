@@ -15,7 +15,7 @@ interface ContestRow {
   title: string
   grade: number
   question_pdf_filename: string | null
-  display_order?: number | null
+  contest_number: number
 }
 
 interface SessionRow {
@@ -61,7 +61,7 @@ export function StudentDashboard() {
       const { data: contestsData, error: contestsError } = await supabase
         .from('gauss_contests')
         .select('*')
-        .order('title', { ascending: true })
+        .order('contest_number', { ascending: true })
 
       if (contestsError) throw contestsError
 
@@ -72,7 +72,7 @@ export function StudentDashboard() {
         title: c.title,
         grade: c.grade,
         question_pdf_filename: c.question_pdf_filename,
-        display_order: c.display_order || 0,
+        contest_number: c.contest_number || 0,
       })))
 
       // Fetch user's sessions
