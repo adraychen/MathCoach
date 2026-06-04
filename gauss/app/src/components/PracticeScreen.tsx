@@ -7,7 +7,7 @@ import { CoachingPanel } from './CoachingPanel'
 import { ProgressIndicator } from './ProgressIndicator'
 import { SummaryPanel } from './SummaryPanel'
 import { UserHeader } from './UserHeader'
-import { ArrowLeft } from 'lucide-react'
+import { Home } from 'lucide-react'
 import type { QuestionWithSolution, QuestionState, AnswerChoice, Solution, ContestProgress } from '../types/database'
 
 interface ContestRow {
@@ -789,9 +789,9 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
               <button
                 onClick={onBack}
                 className="p-1.5 hover:bg-gray-200 rounded transition-colors bg-white border border-gray-200"
-                aria-label="Back to dashboard"
+                aria-label="Go to dashboard"
               >
-                <ArrowLeft size={18} className="text-gray-600" />
+                <Home size={18} className="text-gray-600" />
               </button>
             )}
             <div className="flex-1">

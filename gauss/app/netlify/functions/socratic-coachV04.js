@@ -54,28 +54,13 @@ Coaching decision tree:
 3. If the student's response shows concept confusion, use the concept repair rule.
 4. If the student is partially correct but incomplete, use the partial-progress rule. Do not restart with a broad strategy question.
 5. If the student is on the right path, ask the next small-step question without over-praising.
-6. If the student reaches the final answer and it matches the private correct answer, correct option text, or official solution, confirm the answer and tell the student to select and submit it on the answer card. Do not continue coaching.
+6. If the student clearly reaches the final answer through reasoning, briefly confirm the reasoning in one short sentence.
 7. If the student asks for the full solution, do not provide it in Socratic coaching; ask one next-step guiding question instead.
 `;
 
 const PARTIAL_PROGRESS_RULE = `
 Partial-progress rule:
 If the student's response is partly correct but missing one important piece, do not go back to a broad strategy question. Use the official solution privately to identify the missing piece, then ask one narrow gap-finding question that helps the student find only that missing piece. Do not directly state the missing value or final answer.
-`;
-
-const INCORRECT_INTERMEDIATE_STEP_RULE = `
-Incorrect intermediate step rule:
-If the student states an intermediate fact that conflicts with the private correct answer, correct option text, official solution, coaching plan, or known mathematical facts, do not continue reasoning from that incorrect statement. Briefly repair the mistaken step using the smallest explanation needed, then ask one small guiding question.
-`;
-
-const FINAL_ANSWER_AUTHORITY_RULE = `
-Final-answer authority rule:
-When deciding whether the student's latest response is FINAL_CORRECT, use the private correct answer, correct option text, official solution, and coaching plan as the authoritative context. Do not decide correctness only from the conversation history. If the student's latest response conflicts with the private correct answer, correct option text, or official solution, do not classify it as FINAL_CORRECT. If the student's latest response matches the correct answer in words, numbers, option text, equivalent wording, or equivalent correct reasoning, classify it as FINAL_CORRECT.
-`;
-
-const ANSWER_SUBMISSION_RULE = `
-Answer submission rule:
-If the student's latest response correctly answers the original contest question, stop coaching. Briefly confirm the answer and tell the student to select and submit the answer on the answer card. Do not ask another guiding question. Only use this when the student has answered the original problem, not when the student only answered a smaller coaching step.
 `;
 
 const PARTIAL_PROGRESS_EXAMPLES = `
@@ -204,7 +189,6 @@ ${COACHING_RULES}
 ${CONCEPT_REPAIR_RULE}
 ${RESPONSE_DECISION_TREE}
 ${PARTIAL_PROGRESS_RULE}
-${INCORRECT_INTERMEDIATE_STEP_RULE}
 
 ${buildPrivateContext(context)}
 
@@ -237,9 +221,6 @@ ${RESPONSE_DECISION_TREE}
 ${CONCEPT_REPAIR_EXAMPLES}
 ${PARTIAL_PROGRESS_RULE}
 ${PARTIAL_PROGRESS_EXAMPLES}
-${INCORRECT_INTERMEDIATE_STEP_RULE}
-${FINAL_ANSWER_AUTHORITY_RULE}
-${ANSWER_SUBMISSION_RULE}
 
 ${buildPrivateContext(context)}
 
@@ -250,7 +231,7 @@ Follow-up instructions:
   2. PARTIAL_CORRECT: The student has a useful piece of the reasoning but has not completed the answer.
   3. CONCEPT_CONFUSION: The student shows misunderstanding of a key word, concept, or prerequisite skill.
   4. OFF_TRACK: The student response does not follow the needed reasoning.
-- If FINAL_CORRECT: briefly confirm that the student answered the original contest question correctly, tell the student to select and submit the answer on the answer card, and do not ask another question.
+- If FINAL_CORRECT: briefly confirm and summarize the key reasoning in one short sentence. Do not ask another question.
 - If PARTIAL_CORRECT: ask one narrow gap-finding question that targets only the missing piece. Do not restart with a broad strategy question.
 - If CONCEPT_CONFUSION: give one short Grade 7-friendly clarification, then ask exactly one guiding question.
 - If OFF_TRACK: ask one simpler guiding question.
@@ -259,9 +240,8 @@ Follow-up instructions:
 - Never say only "Correct" or "Great"; either ask the next question or confirm the final reasoning when complete.
 
 Examples of FINAL_CORRECT handling. These are examples only; do not hardcode them:
-- If the correct answer is 12 and the student says "12" or "I think it is twelve", confirm that this answers the question and tell the student to submit it on the answer card.
-- If the correct answer is 8 cm and the student says "the answer is 8", confirm that this matches the greatest length and tell the student to submit it on the answer card.
-- If the correct answer is Wednesday and the student says "Wednesday", confirm that this answers the question and tell the student to submit it on the answer card.
+- If the correct answer is 12 and the student says "12" or "I think it is twelve", confirm that this answers the question and summarize the reasoning.
+- If the correct answer is 8 cm and the student says "the answer is 8", confirm that this matches the greatest length and summarize the diameter-radius idea.
 `;
 
   const messages = [{ role: 'system', content: systemPrompt }];
@@ -328,22 +308,22 @@ function buildFinalConfirmation(context) {
   const pattern = normalizeAnswerText(context.solution_pattern);
 
   if (reasoning.includes('prime') || pattern.includes('factor')) {
-    return 'Yes—that answers the question. Please select and submit your answer on the answer card.';
+    return 'Yes—that answers the question. You found the prime factors and added them.';
   }
 
   if (reasoning.includes('diameter') || pattern.includes('double the radius') || normalizeAnswerText(context.question_text).includes('circle')) {
-    return 'Yes—that matches the greatest length. Please select and submit your answer on the answer card.';
+    return 'Yes—that matches the greatest length. The key idea is that the diameter is twice the radius.';
   }
 
   if (reasoning.includes('mean') || reasoning.includes('average') || pattern.includes('mean')) {
-    return 'Yes—that answers the question. Please select and submit your answer on the answer card.';
+    return 'Yes—that answers the question. You used the mean to connect the total and the number of values.';
   }
 
   if (reasoning.includes('probability') || pattern.includes('outcome')) {
-    return 'Yes—that answers the question. Please select and submit your answer on the answer card.';
+    return 'Yes—that answers the question. You compared the favourable outcomes with the total possible outcomes.';
   }
 
-  return 'Yes—that answers the question. Please select and submit your answer on the answer card.';
+  return 'Yes—that answers the question. Your reasoning reaches the required result.';
 }
 
 function getFallbackStuckMessage(context) {
@@ -423,9 +403,6 @@ You are a Waterloo Gauss Grade 7 math coach.
 The student does not know how to start.
 
 ${COACHING_RULES}
-${INCORRECT_INTERMEDIATE_STEP_RULE}
-${FINAL_ANSWER_AUTHORITY_RULE}
-${ANSWER_SUBMISSION_RULE}
 
 Coaching plan context:
 ${planContext}
@@ -468,9 +445,6 @@ async function getGroqFollowupCoachingWithPlan(context, plan, studentMessage, co
 You are a Socratic Waterloo Gauss Grade 7 math coach.
 
 ${COACHING_RULES}
-${INCORRECT_INTERMEDIATE_STEP_RULE}
-${FINAL_ANSWER_AUTHORITY_RULE}
-${ANSWER_SUBMISSION_RULE}
 
 Coaching plan context:
 ${planContext}
@@ -495,7 +469,7 @@ Follow-up instructions:
    - ASKED_FOR_SOLUTION: Student explicitly asks to see the answer or full solution.
 
 2. Based on the classification:
-   - FINAL_CORRECT: Briefly confirm that the student answered the original contest question correctly, tell the student to select and submit the answer on the answer card, and do not ask another question.
+   - FINAL_CORRECT: Briefly confirm and summarize the key reasoning in one sentence. Do not ask another question.
    - PARTIAL_CORRECT: Confirm the correct part briefly. Ask one narrow question about the missing piece.
    - CONCEPT_CONFUSION: Give one short Grade 7-friendly clarification, then ask one small guiding question.
    - OFF_TRACK: Gently redirect. Ask one clear next-step question.
