@@ -15,7 +15,7 @@ interface ContestRow {
   title: string
   grade: number
   question_pdf_filename: string | null
-  display_order: number
+  display_order?: number | null
 }
 
 interface SessionRow {
@@ -61,7 +61,6 @@ export function StudentDashboard() {
       const { data: contestsData, error: contestsError } = await supabase
         .from('gauss_contests')
         .select('*')
-        .order('display_order', { ascending: true })
         .order('title', { ascending: true })
 
       if (contestsError) throw contestsError
@@ -176,6 +175,7 @@ export function StudentDashboard() {
       }
 
     } catch (err) {
+      console.error('Dashboard error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load dashboard')
     } finally {
       setLoading(false)
