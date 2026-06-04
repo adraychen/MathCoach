@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { resolveQuestionContext, getCorrectOptionText as getOptionText, getContextSummary } from './lib/questionContextResolver.js';
 
 /**
  * Netlify Function: Socratic Coach
@@ -598,69 +599,24 @@ export async function handler(event) {
     };
   }
 
-  const { data: contest, error: contestError } = await supabase
-    .from('gauss_contests')
-    .select('id')
-    .eq('contest_code', contestCode)
-    .single();
+  // Use question context resolver
+  const resolved = await resolveQuestionContext(supabase, contestCode, contestQuestionNumber);
 
-  if (contestError || !contest) {
+  if (!resolved.success) {
+    const statusCode = resolved.error.includes('not found') ? 404 : 500;
     return {
-      statusCode: 404,
+      statusCode,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: `Contest "${contestCode}" not found` }),
+      body: JSON.stringify({ error: resolved.error }),
     };
   }
 
-  // Query gauss_questions with fallback fields (question_text, options)
-  const { data: question, error: qError } = await supabase
-    .from('gauss_questions')
-    .select('id, short_problem_summary, primary_topics, secondary_topics, difficulty_band, correct_answer, source_year, source_grade, source_question_number, question_text, options')
-    .eq('contest_id', contest.id)
-    .eq('contest_question_number', contestQuestionNumber)
-    .single();
+  const resolvedContext = resolved.context;
+  console.log(`[Coaching] Context resolved:`, getContextSummary(resolvedContext));
 
-  if (qError || !question) {
-    return {
-      statusCode: 404,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: `Question ${contestQuestionNumber} not found` }),
-    };
-  }
-
-  // Try to get source question if source mapping exists
-  let sourceQuestion = null;
-  if (question.source_year && question.source_grade && question.source_question_number) {
-    const { data: srcData, error: srcError } = await supabase
-      .from('gauss_source_questions')
-      .select('id, question_text, options, correct_answer, official_solution, reasoning_summary, solution_pattern, archetype, visual_required, visual_description')
-      .eq('year', question.source_year)
-      .eq('grade', question.source_grade)
-      .eq('question_number', question.source_question_number)
-      .single();
-
-    if (!srcError && srcData) {
-      sourceQuestion = srcData;
-    }
-  }
-
-  // Get PSG solution (fallback reasoning support)
-  const { data: solution } = await supabase
-    .from('gauss_solutions')
-    .select('psg_solution_text, psg_solution_summary')
-    .eq('question_id', question.id)
-    .single();
-
-  // Determine if coaching is available
-  // Coaching requires at least one of:
-  // 1. Source question with official_solution
-  // 2. Fallback question_text + options in gauss_questions
-  // 3. PSG solution text
-  const hasSourceSolution = sourceQuestion?.official_solution;
-  const hasFallbackQuestion = question.question_text && question.options;
-  const hasPsgSolution = solution?.psg_solution_text;
-
-  if (!hasSourceSolution && !hasFallbackQuestion && !hasPsgSolution) {
+  // Check coaching availability
+  // Current rule: requires official_solution from gauss_source_questions
+  if (!resolved.coachingAvailable) {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -668,55 +624,27 @@ export async function handler(event) {
     };
   }
 
-  // Query coaching plan by source_question_id (if source question exists)
-  const sourceQuestionId = sourceQuestion?.id || null;
-  console.log(`[Coaching] Source question ID: ${sourceQuestionId}, fallback mode: ${!hasSourceSolution}`);
-
-  // Query coaching plan by source_question_id (only if source question exists)
-  let coachingPlan = null;
-  if (sourceQuestionId) {
-    const { data: planData, error: planError } = await supabase
-      .from('gauss_coaching_plans')
-      .select('first_step_prompt, coaching_goal, expected_reasoning_steps, key_concepts, common_misconceptions, adaptive_guidance_rules')
-      .eq('source_question_id', sourceQuestionId)
-      .single();
-
-    if (!planError && planData) {
-      coachingPlan = planData;
-    }
-  }
-
+  const coachingPlan = resolvedContext.coachingPlan;
   const hasCoachingPlan = !!coachingPlan;
   console.log(`[Coaching] Coaching plan found: ${hasCoachingPlan}`);
 
-  // Build context with source priority:
-  // 1. question_text: gauss_source_questions.question_text > gauss_questions.question_text
-  // 2. options: gauss_source_questions.options > gauss_questions.options
-  // 3. solution: gauss_source_questions.official_solution > gauss_solutions.psg_solution_text
-  // 4. correct_answer: gauss_questions.correct_answer (primary source for validation)
+  // Build context object for coaching functions (using snake_case for compatibility)
   const context = {
-    short_problem_summary: question.short_problem_summary,
-    primary_topics: question.primary_topics,
-    secondary_topics: question.secondary_topics,
-    difficulty_band: question.difficulty_band,
-    // Correct answer from gauss_questions (authoritative)
-    correct_answer: question.correct_answer,
-    // PSG solution as fallback reasoning
-    psg_solution_text: solution?.psg_solution_text || null,
-    psg_solution_summary: solution?.psg_solution_summary || null,
-    // Question text: source > fallback
-    question_text: sourceQuestion?.question_text || question.question_text || null,
-    // Options: source > fallback
-    options: sourceQuestion?.options || question.options || null,
-    // Official solution (source only, PSG is separate)
-    official_solution: sourceQuestion?.official_solution || null,
-    // Reasoning metadata from source (if available)
-    reasoning_summary: sourceQuestion?.reasoning_summary || null,
-    solution_pattern: sourceQuestion?.solution_pattern || null,
-    archetype: sourceQuestion?.archetype || null,
-    visual_required: sourceQuestion?.visual_required || null,
-    visual_description: sourceQuestion?.visual_description || null,
-    // Coaching plan reasoning steps as fallback when no official solution
+    short_problem_summary: resolvedContext.shortProblemSummary,
+    primary_topics: resolvedContext.primaryTopics,
+    secondary_topics: resolvedContext.secondaryTopics,
+    difficulty_band: resolvedContext.difficultyBand,
+    correct_answer: resolvedContext.correctAnswer,
+    psg_solution_text: resolvedContext.psgSolutionText,
+    psg_solution_summary: resolvedContext.psgSolutionSummary,
+    question_text: resolvedContext.questionText,
+    options: resolvedContext.options,
+    official_solution: resolvedContext.officialSolution,
+    reasoning_summary: resolvedContext.reasoningSummary,
+    solution_pattern: resolvedContext.solutionPattern,
+    archetype: resolvedContext.archetype,
+    visual_required: resolvedContext.visualRequired,
+    visual_description: resolvedContext.visualDescription,
     coaching_plan_steps: coachingPlan?.expected_reasoning_steps || null,
   };
 
