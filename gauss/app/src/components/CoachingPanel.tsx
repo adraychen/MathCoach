@@ -3,12 +3,16 @@ import { Lightbulb, Loader2, Send } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Solution } from '../types/database'
 
+type CoachingMode = 'stuck' | 'wrong_answer'
+
 interface CoachingPanelProps {
   solution: Solution | null
   isOpen: boolean
   onToggle: () => void
   contestCode: string
   contestQuestionNumber: number
+  coachingMode?: CoachingMode
+  selectedAnswer?: string | null
 }
 
 interface ChatMessage {
@@ -30,12 +34,15 @@ export function CoachingPanel({
   onToggle,
   contestCode,
   contestQuestionNumber,
+  coachingMode = 'stuck',
+  selectedAnswer = null,
 }: CoachingPanelProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [hasFetched, setHasFetched] = useState(false)
+  const [hasFetchedStuck, setHasFetchedStuck] = useState(false)
   const [studentInput, setStudentInput] = useState('')
+  const [lastWrongAnswerFetched, setLastWrongAnswerFetched] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const coachingAvailable = solution?.coaching_available ?? false
@@ -44,24 +51,42 @@ export function CoachingPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  // Reset everything when question changes
   useEffect(() => {
     setMessages([])
     setError(null)
-    setHasFetched(false)
+    setHasFetchedStuck(false)
+    setLastWrongAnswerFetched(null)
     setStudentInput('')
   }, [contestQuestionNumber])
 
+  // Handle stuck coaching - fetch when panel opens in stuck mode
   useEffect(() => {
-    if (isOpen && coachingAvailable && !hasFetched && !loading) {
-      fetchCoaching('stuck', '', [])
+    if (isOpen && coachingAvailable && !hasFetchedStuck && !loading && coachingMode === 'stuck') {
+      fetchCoaching('stuck', '', [], null)
+      setHasFetchedStuck(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, coachingAvailable, hasFetched])
+  }, [isOpen, coachingAvailable, hasFetchedStuck, coachingMode])
+
+  // Handle wrong_answer coaching - append to existing conversation
+  useEffect(() => {
+    if (isOpen && coachingAvailable && coachingMode === 'wrong_answer' && selectedAnswer && !loading) {
+      // Only fetch if this is a new wrong answer we haven't fetched for
+      if (lastWrongAnswerFetched !== selectedAnswer) {
+        setLastWrongAnswerFetched(selectedAnswer)
+        // Pass existing messages as conversation history
+        fetchCoaching('wrong_answer', '', messages, selectedAnswer)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, coachingAvailable, coachingMode, selectedAnswer, lastWrongAnswerFetched])
 
   const fetchCoaching = async (
-    trigger: 'stuck' | 'followup',
+    trigger: 'stuck' | 'followup' | 'wrong_answer',
     studentMessage: string,
-    conversationHistory: ChatMessage[]
+    conversationHistory: ChatMessage[],
+    wrongAnswer?: string | null
   ) => {
     setLoading(true)
     setError(null)
@@ -75,19 +100,26 @@ export function CoachingPanel({
         return
       }
 
+      const requestBody: Record<string, unknown> = {
+        contest_code: contestCode,
+        contest_question_number: contestQuestionNumber,
+        coaching_trigger: trigger,
+        student_message: studentMessage,
+        conversation_history: conversationHistory,
+      }
+
+      // Include selected_answer for wrong_answer trigger
+      if (trigger === 'wrong_answer' && wrongAnswer) {
+        requestBody.selected_answer = wrongAnswer
+      }
+
       const response = await fetch('/.netlify/functions/socratic-coach', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          contest_code: contestCode,
-          contest_question_number: contestQuestionNumber,
-          coaching_trigger: trigger,
-          student_message: studentMessage,
-          conversation_history: conversationHistory,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const result: CoachingResponse = await response.json()
@@ -105,8 +137,6 @@ export function CoachingPanel({
       if (result.coach_message) {
         setMessages(prev => [...prev, { role: 'coach', content: result.coach_message! }])
       }
-
-      setHasFetched(true)
     } catch (err) {
       setError('Network error. Please try again.')
     } finally {
@@ -124,7 +154,8 @@ export function CoachingPanel({
     setMessages(prev => [...prev, studentMessage])
     setStudentInput('')
 
-    await fetchCoaching('followup', trimmedInput, historyBeforeStudentMessage)
+    // Follow-up always uses 'followup' trigger regardless of initial mode
+    await fetchCoaching('followup', trimmedInput, historyBeforeStudentMessage, null)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -138,7 +169,8 @@ export function CoachingPanel({
   const resetCoaching = () => {
     setMessages([])
     setError(null)
-    setHasFetched(false)
+    setHasFetchedStuck(false)
+    setLastWrongAnswerFetched(null)
     setStudentInput('')
   }
 
@@ -215,7 +247,11 @@ export function CoachingPanel({
             <button
               onClick={() => {
                 setError(null)
-                setHasFetched(false)
+                if (coachingMode === 'stuck') {
+                  setHasFetchedStuck(false)
+                } else {
+                  setLastWrongAnswerFetched(null)
+                }
               }}
               className="text-sm text-blue-600 hover:text-blue-800"
             >

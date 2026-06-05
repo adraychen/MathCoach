@@ -82,6 +82,8 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [questionStates, setQuestionStates] = useState<Map<string, QuestionState>>(new Map())
   const [coachingOpen, setCoachingOpen] = useState(false)
+  const [coachingMode, setCoachingMode] = useState<'stuck' | 'wrong_answer'>('stuck')
+  const [wrongAnswerForCoaching, setWrongAnswerForCoaching] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pdfPage, setPdfPage] = useState(1)
@@ -460,6 +462,8 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
     if (index >= 0 && index < questions.length) {
       setCurrentQuestionIndex(index)
       setCoachingOpen(false)
+      setCoachingMode('stuck')
+      setWrongAnswerForCoaching(null)
       setShowSummary(false)
 
       const question = questions[index]
@@ -547,7 +551,9 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
       // Auto-advance after a short delay
       setTimeout(() => goToNextQuestion(), 600)
     } else {
-      // Open coaching panel on wrong answer
+      // Open coaching panel on wrong answer with wrong_answer mode
+      setCoachingMode('wrong_answer')
+      setWrongAnswerForCoaching(answer)
       setCoachingOpen(true)
     }
   }, [currentQuestion, questionStates, saveAttempt, updateSessionCounts, goToNextQuestion])
@@ -688,6 +694,8 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
     setCurrentQuestionIndex(0)
     setShowSummary(false)
     setCoachingOpen(false)
+    setCoachingMode('stuck')
+    setWrongAnswerForCoaching(null)
 
     if (questions[0]?.question_pdf_page) {
       setPdfPage(questions[0].question_pdf_page)
@@ -699,7 +707,14 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   }
 
   const toggleCoaching = () => {
-    setCoachingOpen((prev) => !prev)
+    setCoachingOpen((prev) => {
+      // When manually opening, use stuck mode
+      if (!prev) {
+        setCoachingMode('stuck')
+        setWrongAnswerForCoaching(null)
+      }
+      return !prev
+    })
   }
 
   if (loading) {
@@ -806,6 +821,8 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
               onToggle={toggleCoaching}
               contestCode={contestCode}
               contestQuestionNumber={currentQuestion.contest_question_number}
+              coachingMode={coachingMode}
+              selectedAnswer={wrongAnswerForCoaching}
             />
           </div>
           {/* Progress Indicator - Bottom of right panel */}

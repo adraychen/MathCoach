@@ -4,7 +4,7 @@ import { resolveQuestionContext, getCorrectOptionText as getOptionText, getConte
 /**
  * Netlify Function: Socratic Coach
  *
- * Supports stuck coaching and follow-up coaching.
+ * Supports stuck coaching, follow-up coaching, and wrong-answer coaching.
  * Uses gauss_coaching_plans when available for more targeted guidance.
  *
  * POST /.netlify/functions/socratic-coach
@@ -14,11 +14,12 @@ import { resolveQuestionContext, getCorrectOptionText as getOptionText, getConte
  *
  * Body:
  *   {
- *     "set_code": "G7gauss1",
- *     "practice_question_number": 11,
- *     "coaching_trigger": "stuck" | "followup",
+ *     "contest_code": "G7gauss2025",
+ *     "contest_question_number": 11,
+ *     "coaching_trigger": "stuck" | "followup" | "wrong_answer",
  *     "student_message": "",
- *     "conversation_history": []
+ *     "conversation_history": [],
+ *     "selected_answer": "B"  // required for wrong_answer trigger
  *   }
  */
 
@@ -95,6 +96,35 @@ Examples of concept repair. These are examples only; do not hardcode them:
 - If the student confuses mean with total: "The mean is the total divided by the number of values. What total would the mean represent?"
 - If the student confuses probability with counting only favourable cases: "Probability compares favourable outcomes to total possible outcomes. What are the total possible outcomes?"
 - If the student confuses diameter with radius: "A diameter goes all the way across a circle through the centre. How is it related to the radius?"
+`;
+
+// ============================================
+// Wrong Answer Coaching Rules
+// ============================================
+
+const WRONG_ANSWER_COACHING_RULES = `
+Wrong-answer coaching rules:
+- Maximum 2 short sentences.
+- Start with a brief "Not quite" style acknowledgment.
+- Ask ONE targeted repair question.
+- Do not reveal the correct answer.
+- Do not reveal the correct option letter.
+- Do not compare all answer choices.
+- Infer the likely mistake from the selected wrong option.
+- If the wrong answer suggests a specific misconception, address that misconception briefly.
+- If the wrong answer does not reveal a clear misconception, redirect to the key reasoning step.
+- Use Grade 7-friendly wording.
+- Do not say "Your answer is wrong" or similar harsh phrasing.
+`;
+
+const WRONG_ANSWER_DECISION_TREE = `
+Wrong-answer coaching decision tree:
+1. Identify what the student's selected answer implies about their reasoning.
+2. Check if the selected answer matches a known common misconception.
+3. If a misconception is detected, give a brief clarification and ask one repair question.
+4. If no clear misconception, redirect to the key first step of the solution.
+5. Do not compare the wrong answer to the correct answer directly.
+6. Do not list what other options would mean.
 `;
 
 const MODEL_NAME = 'llama-3.3-70b-versatile';
@@ -522,6 +552,148 @@ Follow-up instructions:
 }
 
 // ============================================
+// Wrong Answer Coaching Functions
+// ============================================
+
+function getWrongOptionText(context, selectedAnswer) {
+  if (!selectedAnswer || !context.options) return null;
+  const letter = selectedAnswer.toUpperCase();
+  return context.options[letter] || context.options[letter.toLowerCase()] || null;
+}
+
+function buildWrongAnswerContext(context, selectedAnswer) {
+  const wrongOptionText = getWrongOptionText(context, selectedAnswer);
+  const correctOptionText = getCorrectOptionText(context);
+
+  return `
+Question:
+${context.question_text || context.short_problem_summary || 'Question text not available'}
+
+Answer options:
+${context.options ? Object.entries(context.options).map(([k, v]) => `${k}: ${v}`).join('\n') : 'Not available'}
+
+Student's selected answer: ${selectedAnswer}
+Student's selected option text: ${wrongOptionText || 'Not available'}
+
+Correct answer letter (private, do not reveal): ${context.correct_answer || 'Not available'}
+Correct option text (private, do not reveal): ${correctOptionText || 'Not available'}
+
+${context.official_solution ? `Official solution (private, use to infer the student's mistake):\n${context.official_solution}\n` : ''}
+${context.reasoning_summary ? `Reasoning summary (private):\n${context.reasoning_summary}\n` : ''}
+${context.solution_pattern ? `Solution pattern (private):\n${context.solution_pattern}\n` : ''}
+${context.archetype ? `Reasoning style (private):\n${context.archetype}\n` : ''}
+${context.visual_description ? `Visual description:\n${context.visual_description}\n` : ''}
+`;
+}
+
+async function getGroqWrongAnswerCoaching(context, selectedAnswer) {
+  const prompt = `
+You are a Waterloo Gauss Grade 7 math coach.
+
+The student just submitted a wrong answer. Help them understand their mistake without revealing the correct answer.
+
+${WRONG_ANSWER_COACHING_RULES}
+${WRONG_ANSWER_DECISION_TREE}
+
+${buildWrongAnswerContext(context, selectedAnswer)}
+
+Instructions:
+- Analyze what the student's selected answer (${selectedAnswer}) implies about their reasoning.
+- Infer the likely mistake based on the wrong option value and the official solution.
+- Give a brief "Not quite" style response.
+- Ask one targeted repair question that guides them toward the correct reasoning.
+- Do not reveal the correct answer or correct option letter.
+- Do not compare multiple answer choices.
+- Maximum 2 short sentences.
+`;
+
+  return callGroq([
+    {
+      role: 'system',
+      content: 'You are a Socratic Waterloo math tutor for Grade 7 students. When a student submits a wrong answer, help them discover their mistake without revealing the correct answer.',
+    },
+    { role: 'user', content: prompt },
+  ]);
+}
+
+async function getGroqWrongAnswerCoachingWithPlan(context, selectedAnswer, coachingPlan) {
+  const wrongOptionText = getWrongOptionText(context, selectedAnswer);
+  const correctOptionText = getCorrectOptionText(context);
+
+  // Build misconception context from coaching plan
+  let misconceptionContext = '';
+  if (coachingPlan.common_misconceptions && coachingPlan.common_misconceptions.length > 0) {
+    const misconceptions = Array.isArray(coachingPlan.common_misconceptions)
+      ? coachingPlan.common_misconceptions.join('; ')
+      : coachingPlan.common_misconceptions;
+    misconceptionContext = `Common misconceptions to check for: ${misconceptions}`;
+  }
+
+  const prompt = `
+You are a Waterloo Gauss Grade 7 math coach.
+
+The student just submitted a wrong answer. Help them understand their mistake without revealing the correct answer.
+
+${WRONG_ANSWER_COACHING_RULES}
+${WRONG_ANSWER_DECISION_TREE}
+
+Coaching plan context:
+${coachingPlan.coaching_goal ? `Coaching goal: ${coachingPlan.coaching_goal}` : ''}
+${misconceptionContext}
+${coachingPlan.key_concepts ? `Key concepts: ${Array.isArray(coachingPlan.key_concepts) ? coachingPlan.key_concepts.join(', ') : coachingPlan.key_concepts}` : ''}
+
+Question:
+${context.question_text || context.short_problem_summary || 'Question text not available'}
+
+Answer options:
+${context.options ? Object.entries(context.options).map(([k, v]) => `${k}: ${v}`).join('\n') : 'Not available'}
+
+Student's selected answer: ${selectedAnswer}
+Student's selected option text: ${wrongOptionText || 'Not available'}
+
+Correct answer letter (private, do not reveal): ${context.correct_answer || 'Not available'}
+Correct option text (private, do not reveal): ${correctOptionText || 'Not available'}
+
+${context.official_solution ? `Official solution (private):\n${context.official_solution}\n` : ''}
+
+Instructions:
+- Check if the student's wrong answer matches any of the common misconceptions.
+- If a misconception is detected, briefly address it and ask one repair question.
+- If no clear misconception, use the coaching goal to redirect to the key reasoning step.
+- Give a brief "Not quite" style response.
+- Do not reveal the correct answer or correct option letter.
+- Maximum 2 short sentences.
+`;
+
+  return callGroq([
+    {
+      role: 'system',
+      content: 'You are a Socratic Waterloo math tutor for Grade 7 students. When a student submits a wrong answer, help them discover their mistake without revealing the correct answer.',
+    },
+    { role: 'user', content: prompt },
+  ]);
+}
+
+function getFallbackWrongAnswerMessage(context, selectedAnswer) {
+  const reasoning = (context.reasoning_summary || '').toLowerCase();
+
+  if (reasoning.includes('prime')) {
+    return 'Not quite. What does "prime factor" mean, and have you found all of them?';
+  }
+  if (reasoning.includes('mean') || reasoning.includes('average')) {
+    return 'Not quite. How do you calculate the mean from the total?';
+  }
+  if (reasoning.includes('probability')) {
+    return 'Not quite. What are all the possible outcomes?';
+  }
+  if (reasoning.includes('pattern') || reasoning.includes('cycle')) {
+    return 'Not quite. What is the repeating pattern, and how many items are in one cycle?';
+  }
+
+  return 'Not quite. Can you walk through the first step of your reasoning?';
+}
+
+// ============================================
 // Main Handler
 // ============================================
 
@@ -593,6 +765,7 @@ export async function handler(event) {
     coaching_trigger,
     student_message = '',
     conversation_history = [],
+    selected_answer = null,
   } = body;
 
   // Use new naming internally, fall back to old for backward compatibility
@@ -615,12 +788,23 @@ export async function handler(event) {
     };
   }
 
-  if (coaching_trigger !== 'stuck' && coaching_trigger !== 'followup') {
+  if (coaching_trigger !== 'stuck' && coaching_trigger !== 'followup' && coaching_trigger !== 'wrong_answer') {
     return {
       statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'coaching_trigger must be "stuck" or "followup"' }),
+      body: JSON.stringify({ error: 'coaching_trigger must be "stuck", "followup", or "wrong_answer"' }),
     };
+  }
+
+  // Validate selected_answer for wrong_answer trigger
+  if (coaching_trigger === 'wrong_answer') {
+    if (!selected_answer || typeof selected_answer !== 'string' || !/^[A-Ea-e]$/.test(selected_answer)) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'selected_answer (A-E) is required for wrong_answer trigger' }),
+      };
+    }
   }
 
   // Use question context resolver
@@ -683,6 +867,15 @@ export async function handler(event) {
       coachMessage = await getGroqStuckCoaching(context);
     }
     if (!coachMessage) coachMessage = getFallbackStuckMessage(context);
+  } else if (coaching_trigger === 'wrong_answer') {
+    // Wrong answer coaching
+    console.log(`[Coaching] Wrong answer coaching for selected_answer: ${selected_answer}`);
+    if (hasCoachingPlan) {
+      coachMessage = await getGroqWrongAnswerCoachingWithPlan(context, selected_answer, coachingPlan);
+    } else {
+      coachMessage = await getGroqWrongAnswerCoaching(context, selected_answer);
+    }
+    if (!coachMessage) coachMessage = getFallbackWrongAnswerMessage(context, selected_answer);
   } else {
     // Follow-up coaching
     if (hasCoachingPlan) {
