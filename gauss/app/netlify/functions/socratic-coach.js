@@ -75,7 +75,9 @@ When deciding whether the student's latest response is FINAL_CORRECT, use the pr
 
 const ANSWER_SUBMISSION_RULE = `
 Answer submission rule:
-If the student's latest response correctly answers the original contest question, stop coaching. Briefly confirm the answer and tell the student to select and submit the answer on the answer card. Do not ask another guiding question. Only use this when the student has answered the original problem, not when the student only answered a smaller coaching step.
+If the student's latest response correctly answers the original contest question, stop coaching. Briefly confirm the answer and tell the student to select and submit the answer on the answer card. Do not ask another guiding question.
+
+Important: If the student's response to a coaching sub-question also happens to be the correct final answer to the original contest question, classify it as FINAL_CORRECT immediately. Do not ask "Is this your answer?" or "Is this your final answer?" or any similar confirmation question. The student does not need to explicitly state it is their final answer.
 `;
 
 const PARTIAL_PROGRESS_EXAMPLES = `
@@ -246,22 +248,18 @@ ${buildPrivateContext(context)}
 Follow-up instructions:
 - Read the student's latest response and the conversation history.
 - First classify the student's latest response privately as one of these categories:
-  1. FINAL_CORRECT: The student has given the correct final answer, the correct answer in words, the correct option value, or equivalent correct reasoning.
+  1. FINAL_CORRECT: The student has given the correct final answer, the correct answer in words, the correct option value, or equivalent correct reasoning. Important: If the student's response to a coaching sub-question also happens to be the correct answer to the original contest question, classify it as FINAL_CORRECT.
   2. PARTIAL_CORRECT: The student has a useful piece of the reasoning but has not completed the answer.
   3. CONCEPT_CONFUSION: The student shows misunderstanding of a key word, concept, or prerequisite skill.
   4. OFF_TRACK: The student response does not follow the needed reasoning.
-- If FINAL_CORRECT: briefly confirm that the student answered the original contest question correctly, tell the student to select and submit the answer on the answer card, and do not ask another question.
+- If FINAL_CORRECT: briefly confirm that the student answered the original contest question correctly, tell the student to select and submit the answer on the answer card, and do not ask another question. Do not ask "Is this your answer?" or any confirmation question.
 - If PARTIAL_CORRECT: ask one narrow gap-finding question that targets only the missing piece. Do not restart with a broad strategy question.
 - If CONCEPT_CONFUSION: give one short Grade 7-friendly clarification, then ask exactly one guiding question.
 - If OFF_TRACK: ask one simpler guiding question.
 - If the student is close but missing one part, do not ask a broad strategy question such as "How can you use division..." or "How can you break this down...". Ask a specific question about the missing part.
 - Do not reveal the final answer or the correct answer letter unless the student's latest response has already reached the final answer or final reasoning.
 - Never say only "Correct" or "Great"; either ask the next question or confirm the final reasoning when complete.
-
-Examples of FINAL_CORRECT handling. These are examples only; do not hardcode them:
-- If the correct answer is 12 and the student says "12" or "I think it is twelve", confirm that this answers the question and tell the student to submit it on the answer card.
-- If the correct answer is 8 cm and the student says "the answer is 8", confirm that this matches the greatest length and tell the student to submit it on the answer card.
-- If the correct answer is Wednesday and the student says "Wednesday", confirm that this answers the question and tell the student to submit it on the answer card.
+- Never ask "Is this your answer?" or "Is this your final answer?" when the student has given the correct answer.
 `;
 
   const messages = [{ role: 'system', content: systemPrompt }];
@@ -488,14 +486,14 @@ ${context.official_solution || 'Not available'}
 
 Follow-up instructions:
 1. First, privately classify the student's latest response as one of:
-   - FINAL_CORRECT: Student gave the correct final answer or equivalent correct reasoning.
+   - FINAL_CORRECT: Student gave the correct final answer or equivalent correct reasoning. Important: If the student's response to a coaching sub-question also happens to be the correct answer to the original contest question, classify it as FINAL_CORRECT.
    - PARTIAL_CORRECT: Student has part of the reasoning but is missing a piece.
    - CONCEPT_CONFUSION: Student shows misunderstanding of a key concept.
    - OFF_TRACK: Student's response does not follow the needed reasoning.
    - ASKED_FOR_SOLUTION: Student explicitly asks to see the answer or full solution.
 
 2. Based on the classification:
-   - FINAL_CORRECT: Briefly confirm that the student answered the original contest question correctly, tell the student to select and submit the answer on the answer card, and do not ask another question.
+   - FINAL_CORRECT: Briefly confirm that the student answered the original contest question correctly, tell the student to select and submit the answer on the answer card, and do not ask another question. Do not ask "Is this your answer?" or any confirmation question.
    - PARTIAL_CORRECT: Confirm the correct part briefly. Ask one narrow question about the missing piece.
    - CONCEPT_CONFUSION: Give one short Grade 7-friendly clarification, then ask one small guiding question.
    - OFF_TRACK: Gently redirect. Ask one clear next-step question.
@@ -504,13 +502,13 @@ Follow-up instructions:
 3. Adaptive behavior:
    - If the student says "I don't know," "not sure," or gives a vague answer, break the current step into a smaller step.
    - Do not force the student through the expected reasoning steps in order if they need a smaller step.
-   - Example: If a step asks "What is 2 + 4 + 6?" and the student says "I don't know," ask "Start with the first two numbers. What is 2 + 4?"
 
 4. Rules:
    - Maximum 2 short sentences.
    - Ask only ONE guiding question.
    - Never reveal the final answer unless the student has already reached it.
    - Do not say only "Correct" or "Great" without either confirming the final reasoning or asking the next question.
+   - Never ask "Is this your answer?" or "Is this your final answer?" when the student has given the correct answer.
 `;
 
   const messages = [{ role: 'system', content: systemPrompt }];
