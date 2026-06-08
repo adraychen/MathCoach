@@ -44,12 +44,46 @@ export function CoachingPanel({
   const [studentInput, setStudentInput] = useState('')
   const [lastWrongAnswerFetched, setLastWrongAnswerFetched] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const coachingAvailable = solution?.coaching_available ?? false
+
+  // Format math expressions in coach messages
+  const formatMathText = (text: string): string => {
+    return text
+      // Replace pi with π
+      .replace(/\bpi\b/gi, 'π')
+      // Replace ^2, ^3, etc. with superscripts
+      .replace(/\^2/g, '²')
+      .replace(/\^3/g, '³')
+      .replace(/\^4/g, '⁴')
+      .replace(/\^5/g, '⁵')
+      .replace(/\^6/g, '⁶')
+      .replace(/\^7/g, '⁷')
+      .replace(/\^8/g, '⁸')
+      .replace(/\^9/g, '⁹')
+      .replace(/\^0/g, '⁰')
+      .replace(/\^1/g, '¹')
+      // Replace common units
+      .replace(/\bcm2\b/g, 'cm²')
+      .replace(/\bm2\b/g, 'm²')
+      .replace(/\bcm3\b/g, 'cm³')
+      .replace(/\bm3\b/g, 'm³')
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
+
+  // Auto-focus input when panel opens or new message arrives
+  useEffect(() => {
+    if (isOpen && messages.length > 0 && !loading) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+    }
+  }, [isOpen, messages.length, loading])
 
   // Reset everything when question changes
   useEffect(() => {
@@ -193,7 +227,9 @@ export function CoachingPanel({
                 : 'bg-blue-50 border border-blue-200 text-blue-900 rounded-tr-none'
             }`}
           >
-            <p className="whitespace-pre-wrap">{msg.content}</p>
+            <p className="whitespace-pre-wrap">
+              {msg.role === 'coach' ? formatMathText(msg.content) : msg.content}
+            </p>
           </div>
         </div>
       ))}
@@ -217,11 +253,12 @@ export function CoachingPanel({
     <div className="border-t border-gray-200 pt-3 space-y-2">
       <div className="flex gap-2">
         <input
+          ref={inputRef}
           type="text"
           value={studentInput}
           onChange={(e) => setStudentInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type your thinking here..."
+          placeholder="Type here (use pi for π, ^2 for ²)..."
           disabled={loading}
           className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
