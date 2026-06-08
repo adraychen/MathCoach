@@ -82,7 +82,11 @@ export function AnswerCard({
           >
             <ChevronLeft size={18} />
           </button>
-          <span className="text-sm font-bold min-w-[70px] text-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 animate-pulse-subtle">
+          <span className={`text-sm font-bold min-w-[70px] text-center px-2 py-0.5 rounded animate-pulse-subtle ${
+            currentQuestionNumber % 2 === 1
+              ? 'bg-green-100 text-green-700'
+              : 'bg-blue-100 text-blue-700'
+          }`}>
             Q{currentQuestionNumber} / {totalQuestions}
           </span>
           <button
