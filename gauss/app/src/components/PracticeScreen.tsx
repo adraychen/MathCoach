@@ -89,6 +89,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   const [pdfPage, setPdfPage] = useState(1)
   const [showSummary, setShowSummary] = useState(false)
   const [noFlaggedMessage, setNoFlaggedMessage] = useState(false)
+  const [showCorrectAnimation, setShowCorrectAnimation] = useState(false)
 
   // Session tracking
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -552,8 +553,12 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
     await saveAttempt(currentQuestion.id, attemptState)
 
     if (isCorrect) {
-      // Auto-advance after a short delay
-      setTimeout(() => goToNextQuestion(), 600)
+      // Show thumbs up animation, then advance
+      setShowCorrectAnimation(true)
+      setTimeout(() => {
+        setShowCorrectAnimation(false)
+        goToNextQuestion()
+      }, 700)
     } else {
       // Open coaching panel on wrong answer with wrong_answer mode
       setCoachingMode('wrong_answer')
@@ -797,6 +802,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
             onNext={goToNextQuestion}
             canGoPrevious={currentQuestionIndex > 0}
             canGoNext={currentQuestionIndex < questions.length - 1}
+            showCorrectAnimation={showCorrectAnimation}
           />
         </div>
       </div>

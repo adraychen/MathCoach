@@ -1,4 +1,4 @@
-import { Flag, SkipForward, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Flag, SkipForward, X, ChevronLeft, ChevronRight, ThumbsUp } from 'lucide-react'
 import type { AnswerChoice, QuestionState } from '../types/database'
 
 interface AnswerCardProps {
@@ -12,6 +12,7 @@ interface AnswerCardProps {
   onNext: () => void
   canGoPrevious: boolean
   canGoNext: boolean
+  showCorrectAnimation?: boolean
 }
 
 const ANSWER_CHOICES: AnswerChoice[] = ['A', 'B', 'C', 'D', 'E']
@@ -27,6 +28,7 @@ export function AnswerCard({
   onNext,
   canGoPrevious,
   canGoNext,
+  showCorrectAnimation = false,
 }: AnswerCardProps) {
   const { status, wrong_answers, flagged } = questionState
   const isWrong = status === 'wrong'
@@ -59,7 +61,16 @@ export function AnswerCard({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-2 relative">
+      {/* Thumbs up animation */}
+      {showCorrectAnimation && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <div className="animate-thumbs-up">
+            <ThumbsUp size={48} className="text-green-500 fill-green-100" />
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-2">
         {/* Left: Navigation and Question label */}
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -71,7 +82,7 @@ export function AnswerCard({
           >
             <ChevronLeft size={18} />
           </button>
-          <span className="text-sm font-semibold text-gray-700 min-w-[70px] text-center">
+          <span className="text-sm font-bold min-w-[70px] text-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 animate-pulse-subtle">
             Q{currentQuestionNumber} / {totalQuestions}
           </span>
           <button
