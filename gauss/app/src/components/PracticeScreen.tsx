@@ -426,8 +426,10 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   const updateSessionCounts = useCallback(async (states: Map<string, QuestionState>) => {
     const statesArray = Array.from(states.values())
     const counts = {
-      correct_count: statesArray.filter(s => s.status === 'correct').length,
-      wrong_count: statesArray.filter(s => s.status === 'wrong').length,
+      // Correct on first try (no wrong attempts)
+      correct_count: statesArray.filter(s => s.status === 'correct' && s.wrong_answers.length === 0).length,
+      // Had at least one wrong attempt
+      wrong_count: statesArray.filter(s => s.wrong_answers.length > 0).length,
       skipped_count: statesArray.filter(s => s.status === 'skipped').length,
       flagged_count: statesArray.filter(s => s.flagged).length,
     }
@@ -440,8 +442,10 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
     return {
       total: states.length,
       answered: states.filter(s => s.status === 'correct' || s.status === 'wrong').length,
-      correct: states.filter(s => s.status === 'correct').length,
-      wrong: states.filter(s => s.status === 'wrong').length,
+      // Correct on first try (no wrong attempts)
+      correct: states.filter(s => s.status === 'correct' && s.wrong_answers.length === 0).length,
+      // Had at least one wrong attempt (regardless of final status)
+      wrong: states.filter(s => s.wrong_answers.length > 0).length,
       skipped: states.filter(s => s.status === 'skipped').length,
       flagged: states.filter(s => s.flagged).length,
     }
@@ -621,10 +625,11 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   }, [questions, questionStates, goToQuestion])
 
   const handleReviewWrong = useCallback(() => {
-    // Find first wrong question
-    const wrongIndex = questions.findIndex(q =>
-      questionStates.get(q.id)?.status === 'wrong'
-    )
+    // Find first question that had wrong attempts
+    const wrongIndex = questions.findIndex(q => {
+      const state = questionStates.get(q.id)
+      return state && state.wrong_answers.length > 0
+    })
 
     if (wrongIndex >= 0) {
       goToQuestion(wrongIndex)
