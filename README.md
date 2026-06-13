@@ -2,24 +2,59 @@
 
 ## Overview
 
-MathCoach is an AI-powered adaptive learning platform for math competition and curriculum practice. The platform provides guided practice with Socratic coaching across multiple programs.
+MathCoach is an AI-powered adaptive learning platform that teaches various math programs. The platform provides guided practice with Socratic coaching.
 
-## Programs
+## Math Programs
 
-MathCoach supports multiple programs. Each program is a separate folder with its own codebase.
+Users see and access math programs on the MathCoach app:
 
-| Program | Grade | Status | Folder |
-|---------|-------|--------|--------|
-| Grade 7 Gauss Contest | 7 | Active | `/gauss` |
-| Grade 8 Gauss Contest | 8 | Planned | `/gauss` |
-| Grade 7 Pascal Contest | 7 | Planned | TBD |
-| Grade 8 Pascal Contest | 8 | Planned | TBD |
+| Program | Description | Status |
+|---------|-------------|--------|
+| Gauss | Waterloo Gauss Contest (Grade 7/8) | Active |
+| AMC | AMC 8/10 Competition | Planned |
+| Pascal | Waterloo Pascal Contest | Planned |
 
-Currently, only Grade 7 Gauss is developed. More programs will be added later.
+Currently, only the Gauss program is available.
 
 ## Architecture
 
-### Current Stack
+Internally, MathCoach is organized into **modules**:
+
+```
+MathCoach/
+├── gauss/          # Gauss module (active)
+├── frontend/       # Generator frontend (React + Vite)
+├── backend/        # Generator backend (FastAPI)
+├── docs/           # Documentation (style guides, etc.)
+```
+
+### Gauss Module
+
+The gauss module (`/gauss`) contains the codebase for the Gauss program, including:
+- React frontend for student practice
+- Netlify Functions for API
+- SQL migrations for Supabase
+
+### Generator Module
+
+The generator module (`/frontend` + `/backend`) creates adaptive practice questions targeting student weak areas. Rather than using static past papers, it generates new questions from blueprints based on reasoning archetypes.
+
+| Aspect | Details |
+|--------|---------|
+| Frontend | `/frontend` - React + Vite + TypeScript |
+| Backend | `/backend` - FastAPI + OpenRouter API |
+| Initial Target | Gauss program |
+| Approach | Blueprint-based question generation |
+
+**Strategy**: The generator is being developed **Gauss-first**. Other programs may require their own dedicated generators due to differences in question style, difficulty progression, and reasoning patterns.
+
+### Documentation
+
+The `/docs` folder contains reference materials:
+- `gauss_blueprint_manual.md` - Blueprint development workflow for Gauss program
+- `waterloo_gauss_style_guide.md` - Question writing style for Gauss program
+
+## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
@@ -42,7 +77,7 @@ Tables prefixed with `mathcoach_` are shared across all programs:
 
 ### Program-Specific Tables
 
-Each program has its own tables. For Gauss programs:
+Each program has its own tables. For the Gauss program:
 
 | Table | Purpose |
 |-------|---------|
@@ -59,9 +94,9 @@ Each program has its own tables. For Gauss programs:
 ```
 Login
 → Program Selection (skip if only 1 program assigned)
-→ Program Dashboard (filtered by program grade)
-→ Contest Selection
-→ Contest Screen (PDF + Answer Card + Coaching)
+→ Program Dashboard (filtered by grade)
+→ Contest/Practice Selection
+→ Practice Screen (PDF + Answer Card + Coaching)
 ```
 
 ## Roles
@@ -70,11 +105,11 @@ Login
 |------|--------------|
 | Admin | Create teachers/students, assign programs, manage all |
 | Teacher | Create students, view assigned students |
-| Student | Access assigned programs, practice contests, use coaching |
+| Student | Access assigned programs, practice, use coaching |
 
-## Program READMEs
+## Module Documentation
 
-- [Gauss Program README](/gauss/app/README.md) - Detailed documentation for Grade 7/8 Gauss
+- [Gauss Module](/gauss/app/README.md) - Detailed documentation for the Gauss module
 
 ## Educational Philosophy
 
@@ -94,6 +129,6 @@ The coach asks one question at a time and never reveals the final answer until t
 
 ## Local Development
 
-See the program-specific README for development instructions:
+See the module-specific README for development instructions:
 
 - [Gauss Development](/gauss/app/README.md#local-development)

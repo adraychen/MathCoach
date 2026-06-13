@@ -15,12 +15,6 @@ venv/
 .vscode/
 .idea/
 
-# Streamlit
-.streamlit/secrets.toml
-
 # OS
 .DS_Store
 Thumbs.db
-
-# Extracted PDFs (keep structure, ignore large files)
-extracted/*.pdf
