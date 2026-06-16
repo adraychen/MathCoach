@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
-import { LogOut, Users, UserPlus, GraduationCap, BarChart3, X, Loader2, ChevronRight, Edit2, Check } from 'lucide-react'
+import { LogOut, Users, UserPlus, GraduationCap, BarChart3, X, Loader2, ChevronRight, Check } from 'lucide-react'
 
 interface Teacher {
   id: string
@@ -282,11 +282,13 @@ export function AdminPortal() {
 
       // Count students per teacher
       const countMap: Record<string, number> = {}
-      assignmentsData?.forEach(a => {
+      const assignments = assignmentsData as { teacher_id: string }[] | null
+      assignments?.forEach(a => {
         countMap[a.teacher_id] = (countMap[a.teacher_id] || 0) + 1
       })
 
-      const teachersWithCounts = (teachersData || []).map(t => ({
+      const teachers = teachersData as { id: string; display_name: string; email: string }[] | null
+      const teachersWithCounts = (teachers || []).map(t => ({
         ...t,
         student_count: countMap[t.id] || 0
       }))
@@ -313,7 +315,8 @@ export function AdminPortal() {
         .order('grade')
 
       if (programsError) throw programsError
-      setAllPrograms(programsData || [])
+      const programs = programsData as Program[] | null
+      setAllPrograms(programs || [])
 
       // Load all teachers
       const { data: teachersData, error: teachersError } = await supabase
@@ -324,7 +327,8 @@ export function AdminPortal() {
         .order('display_name')
 
       if (teachersError) throw teachersError
-      setAllTeachers(teachersData || [])
+      const teachers = teachersData as { id: string; display_name: string; email: string }[] | null
+      setAllTeachers(teachers || [])
 
       // Load all students
       const { data: studentsData, error: studentsError } = await supabase
@@ -334,6 +338,7 @@ export function AdminPortal() {
         .order('display_name')
 
       if (studentsError) throw studentsError
+      const studentsRaw = studentsData as { id: string; display_name: string; email: string; username: string | null; login_type: 'email' | 'username' }[] | null
 
       // Load student-teacher assignments
       const { data: teacherAssignments, error: taError } = await supabase
@@ -342,6 +347,7 @@ export function AdminPortal() {
         .eq('active', true)
 
       if (taError) throw taError
+      const taList = teacherAssignments as { student_id: string; teacher_id: string }[] | null
 
       // Load student-program assignments
       const { data: programAssignments, error: paError } = await supabase
@@ -350,22 +356,23 @@ export function AdminPortal() {
         .eq('active', true)
 
       if (paError) throw paError
+      const paList = programAssignments as { student_id: string; program_id: string }[] | null
 
       // Build teacher lookup
       const teacherMap: Record<string, { id: string; name: string }> = {}
-      teachersData?.forEach(t => {
+      teachers?.forEach(t => {
         teacherMap[t.id] = { id: t.id, name: t.display_name }
       })
 
       // Build student-teacher map
       const studentTeacherMap: Record<string, string> = {}
-      teacherAssignments?.forEach(a => {
+      taList?.forEach(a => {
         studentTeacherMap[a.student_id] = a.teacher_id
       })
 
       // Build student-programs map
       const studentProgramsMap: Record<string, string[]> = {}
-      programAssignments?.forEach(a => {
+      paList?.forEach(a => {
         if (!studentProgramsMap[a.student_id]) {
           studentProgramsMap[a.student_id] = []
         }
@@ -374,12 +381,12 @@ export function AdminPortal() {
 
       // Build program lookup
       const programMap: Record<string, Program> = {}
-      programsData?.forEach(p => {
+      programs?.forEach(p => {
         programMap[p.id] = p
       })
 
       // Combine data
-      const students: Student[] = (studentsData || []).map(s => {
+      const students: Student[] = (studentsRaw || []).map(s => {
         const teacherId = studentTeacherMap[s.id] || null
         const programIds = studentProgramsMap[s.id] || []
         return {
@@ -424,8 +431,8 @@ export function AdminPortal() {
       if (editTeacherId !== (editingStudent.teacher_id || '')) {
         // Deactivate current assignment
         if (editingStudent.teacher_id) {
-          await supabase
-            .from('student_teacher_assignments')
+          await (supabase
+            .from('student_teacher_assignments') as any)
             .update({ active: false, ended_at: new Date().toISOString() })
             .eq('student_id', editingStudent.id)
             .eq('active', true)
@@ -433,8 +440,8 @@ export function AdminPortal() {
 
         // Create new assignment
         if (editTeacherId) {
-          await supabase
-            .from('student_teacher_assignments')
+          await (supabase
+            .from('student_teacher_assignments') as any)
             .insert({
               student_id: editingStudent.id,
               teacher_id: editTeacherId,
@@ -451,8 +458,8 @@ export function AdminPortal() {
 
       // Remove old programs
       for (const programId of programsToRemove) {
-        await supabase
-          .from('student_program_assignments')
+        await (supabase
+          .from('student_program_assignments') as any)
           .update({ active: false })
           .eq('student_id', editingStudent.id)
           .eq('program_id', programId)
@@ -460,8 +467,8 @@ export function AdminPortal() {
 
       // Add new programs
       for (const programId of programsToAdd) {
-        await supabase
-          .from('student_program_assignments')
+        await (supabase
+          .from('student_program_assignments') as any)
           .insert({
             student_id: editingStudent.id,
             program_id: programId,
