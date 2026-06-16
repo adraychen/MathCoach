@@ -63,6 +63,7 @@ export interface Database {
           wrong_count: number
           skipped_count: number
           flagged_count: number
+          score: number | null
           started_at: string
           completed_at: string | null
           updated_at: string
@@ -78,6 +79,7 @@ export interface Database {
           wrong_count?: number
           skipped_count?: number
           flagged_count?: number
+          score?: number | null
           started_at?: string
           completed_at?: string | null
           updated_at?: string
@@ -93,6 +95,7 @@ export interface Database {
           wrong_count?: number
           skipped_count?: number
           flagged_count?: number
+          score?: number | null
           started_at?: string
           completed_at?: string | null
           updated_at?: string
@@ -178,6 +181,7 @@ export interface ContestSession {
   wrong_count: number
   skipped_count: number
   flagged_count: number
+  score: number | null
   started_at: string
   completed_at: string | null
 }

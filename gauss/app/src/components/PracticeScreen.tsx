@@ -90,6 +90,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   const [showSummary, setShowSummary] = useState(false)
   const [noFlaggedMessage, setNoFlaggedMessage] = useState(false)
   const [showCorrectAnimation, setShowCorrectAnimation] = useState(false)
+  const [isCompleting, setIsCompleting] = useState(false)
 
   // Session tracking
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -485,30 +486,82 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
     if (currentQuestionIndex < questions.length - 1) {
       await goToQuestion(currentQuestionIndex + 1)
     } else {
-      // Reached the end - show summary
+      // Reached the end - show summary, but don't auto-complete
+      // Student must click Complete button to submit
       setShowSummary(true)
-
-      // Check if all questions have been dealt with (answered, skipped, or flagged)
-      const states = Array.from(questionStates.values())
-      const allDealtWith = states.every(s =>
-        s.status === 'correct' || s.status === 'wrong' || s.status === 'skipped' || s.status === 'flagged'
-      )
-
-      if (allDealtWith) {
-        console.log('All questions dealt with, marking session as completed')
-        await updateSession({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-        })
-      }
     }
-  }, [currentQuestionIndex, questions.length, goToQuestion, questionStates, updateSession])
+  }, [currentQuestionIndex, questions.length, goToQuestion])
 
   const goToPreviousQuestion = useCallback(async () => {
     if (currentQuestionIndex > 0) {
       await goToQuestion(currentQuestionIndex - 1)
     }
   }, [currentQuestionIndex, goToQuestion])
+
+  // Calculate score using Waterloo Gauss scoring
+  const calculateScore = useCallback(() => {
+    const states = Array.from(questionStates.values())
+    let score = 0
+    let skippedPoints = 0
+
+    states.forEach(state => {
+      const qNum = state.contest_question_number
+
+      if (state.status === 'correct' && state.wrong_answers.length === 0) {
+        // First-try correct: award points based on question number
+        if (qNum >= 1 && qNum <= 10) {
+          score += 5  // Part A
+        } else if (qNum >= 11 && qNum <= 20) {
+          score += 6  // Part B
+        } else if (qNum >= 21 && qNum <= 25) {
+          score += 8  // Part C
+        }
+      } else if (state.status === 'skipped' || state.status === 'unanswered') {
+        // Skipped/unanswered: 2 points, max 20 total
+        skippedPoints += 2
+      }
+      // Wrong answers (including eventually correct): 0 points
+    })
+
+    // Cap skipped points at 20
+    score += Math.min(skippedPoints, 20)
+
+    return score
+  }, [questionStates])
+
+  // Handle contest completion
+  const handleCompleteContest = useCallback(async () => {
+    if (!sessionId) return
+
+    setIsCompleting(true)
+
+    try {
+      const score = calculateScore()
+      const states = Array.from(questionStates.values())
+
+      await (supabase
+        .from('gauss_contest_sessions') as any)
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          score: score,
+          correct_count: states.filter(s => s.status === 'correct' && s.wrong_answers.length === 0).length,
+          wrong_count: states.filter(s => s.wrong_answers.length > 0).length,
+          skipped_count: states.filter(s => s.status === 'skipped' || s.status === 'unanswered').length,
+        })
+        .eq('id', sessionId)
+
+      // Go back to dashboard
+      if (onBack) {
+        onBack()
+      }
+    } catch (err) {
+      console.error('Error completing contest:', err)
+      setError('Failed to complete contest')
+    } finally {
+      setIsCompleting(false)
+    }
+  }, [sessionId, calculateScore, questionStates, onBack])
 
   const handleSelectAnswer = useCallback(async (answer: AnswerChoice) => {
     if (!currentQuestion) return
@@ -841,6 +894,8 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
             <ProgressIndicator
               progress={progress}
               onReviewFlagged={handleReviewFlagged}
+              onComplete={handleCompleteContest}
+              isCompleting={isCompleting}
             />
             {noFlaggedMessage && (
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-3 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-10">

@@ -28,6 +28,7 @@ interface SessionRow {
   wrong_count: number
   skipped_count: number
   flagged_count: number
+  score: number | null
   started_at: string
   completed_at: string | null
 }
@@ -102,6 +103,7 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
         wrong_count: s.wrong_count,
         skipped_count: s.skipped_count,
         flagged_count: s.flagged_count,
+        score: s.score,
         started_at: s.started_at,
         completed_at: s.completed_at,
       }))
@@ -116,20 +118,23 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
       let totalWrong = 0
       let totalSkipped = 0
       let totalFlagged = 0
-      let totalQuestions = 0
+      let totalScore = 0
 
       mappedSessions.forEach(s => {
         totalCorrect += s.correct_count
         totalWrong += s.wrong_count
         totalSkipped += s.skipped_count
         totalFlagged += s.flagged_count
-        if (s.status === 'completed') {
-          totalQuestions += s.total_questions
+        if (s.status === 'completed' && s.score !== null) {
+          totalScore += s.score
         }
       })
 
-      const averageScore = totalQuestions > 0
-        ? Math.round((totalCorrect / totalQuestions) * 100)
+      // Average score: total score / (completed contests * 150 max points) * 100
+      // Max score per contest: Part A (50) + Part B (60) + Part C (40) = 150
+      const maxPossibleScore = completedSessions.length * 150
+      const averageScore = maxPossibleScore > 0
+        ? Math.round((totalScore / maxPossibleScore) * 100)
         : 0
 
       // Find current in-progress contest
