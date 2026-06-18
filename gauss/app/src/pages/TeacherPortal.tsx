@@ -38,6 +38,7 @@ interface Question {
   contest_question_number: number
   correct_answer: string
   question_text: string | null
+  options: Record<string, string> | null
   official_solution: string | null
 }
 
@@ -343,18 +344,21 @@ export function TeacherPortal() {
         let question_text: string | null = null
         let official_solution: string | null = null
 
+        let options: Record<string, string> | null = null
+
         if (q.source_year && q.source_grade && q.source_question_number) {
           const { data: sourceData } = await supabase
             .from('gauss_source_questions')
-            .select('question_text, official_solution')
+            .select('question_text, options, official_solution')
             .eq('year', q.source_year)
             .eq('grade', q.source_grade)
             .eq('question_number', q.source_question_number)
             .single()
 
           if (sourceData) {
-            const source = sourceData as { question_text: string | null; official_solution: string | null }
+            const source = sourceData as { question_text: string | null; options: Record<string, string> | null; official_solution: string | null }
             question_text = source.question_text
+            options = source.options
             official_solution = source.official_solution
           }
         }
@@ -364,6 +368,7 @@ export function TeacherPortal() {
           contest_question_number: q.contest_question_number,
           correct_answer: q.correct_answer,
           question_text,
+          options,
           official_solution
         })
       }
@@ -587,6 +592,17 @@ export function TeacherPortal() {
                 <div className="mb-3">
                   <p className="text-sm font-medium text-gray-600 mb-1">Question:</p>
                   <p className="text-gray-700 whitespace-pre-wrap">{question.question_text}</p>
+                </div>
+              )}
+              {question.options && (
+                <div className="mb-3 flex flex-wrap gap-4">
+                  {['A', 'B', 'C', 'D', 'E'].map(letter => (
+                    question.options?.[letter] && (
+                      <span key={letter} className="text-gray-700">
+                        ({letter}) {question.options[letter]}
+                      </span>
+                    )
+                  ))}
                 </div>
               )}
               {question.official_solution && (
