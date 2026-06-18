@@ -39,6 +39,7 @@ interface Question {
   correct_answer: string
   question_text: string | null
   options: Record<string, string> | null
+  visual_description: string | null
   official_solution: string | null
 }
 
@@ -345,20 +346,22 @@ export function TeacherPortal() {
         let official_solution: string | null = null
 
         let options: Record<string, string> | null = null
+        let visual_description: string | null = null
 
         if (q.source_year && q.source_grade && q.source_question_number) {
           const { data: sourceData } = await supabase
             .from('gauss_source_questions')
-            .select('question_text, options, official_solution')
+            .select('question_text, options, visual_description, official_solution')
             .eq('year', q.source_year)
             .eq('grade', q.source_grade)
             .eq('question_number', q.source_question_number)
             .single()
 
           if (sourceData) {
-            const source = sourceData as { question_text: string | null; options: Record<string, string> | null; official_solution: string | null }
+            const source = sourceData as { question_text: string | null; options: Record<string, string> | null; visual_description: string | null; official_solution: string | null }
             question_text = source.question_text
             options = source.options
+            visual_description = source.visual_description
             official_solution = source.official_solution
           }
         }
@@ -369,6 +372,7 @@ export function TeacherPortal() {
           correct_answer: q.correct_answer,
           question_text,
           options,
+          visual_description,
           official_solution
         })
       }
@@ -592,6 +596,12 @@ export function TeacherPortal() {
                 <div className="mb-3">
                   <p className="text-sm font-medium text-gray-600 mb-1">Question:</p>
                   <p className="text-gray-700 whitespace-pre-wrap">{question.question_text}</p>
+                </div>
+              )}
+              {question.visual_description && (
+                <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm font-medium text-blue-700 mb-1">Visual Description:</p>
+                  <p className="text-blue-800 text-sm whitespace-pre-wrap">{question.visual_description}</p>
                 </div>
               )}
               {question.options && (
