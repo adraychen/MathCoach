@@ -598,7 +598,7 @@ export function TeacherPortal() {
                   <p className="text-gray-700 whitespace-pre-wrap">{question.question_text}</p>
                 </div>
               )}
-              {question.visual_description && (
+              {question.visual_description && question.visual_description.toLowerCase() !== 'none' && (
                 <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
                   <p className="text-sm font-medium text-blue-700 mb-1">Visual Description:</p>
                   <p className="text-blue-800 text-sm whitespace-pre-wrap">{question.visual_description}</p>
