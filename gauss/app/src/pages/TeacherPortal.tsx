@@ -229,14 +229,20 @@ export function TeacherPortal() {
       const studentIds = assignments.map(a => a.student_id)
 
       // Get program assignments for these students
-      const { data: programAssignments } = await supabase
+      const { data: programAssignments, error: paError } = await supabase
         .from('student_program_assignments')
         .select('program_id')
         .in('student_id', studentIds)
         .eq('active', true)
 
+      if (paError) {
+        console.error('Error loading program assignments:', paError)
+      }
+
       const paList = programAssignments as { program_id: string }[] | null
+      console.log('Program assignments:', paList)
       const programIds = [...new Set(paList?.map(p => p.program_id) || [])]
+      console.log('Program IDs:', programIds)
 
       if (programIds.length === 0) {
         setPrograms([])
@@ -245,12 +251,17 @@ export function TeacherPortal() {
       }
 
       // Get programs
-      const { data: programsData } = await supabase
+      const { data: programsData, error: progError } = await supabase
         .from('mathcoach_programs')
         .select('id, program_code, program_name, grade')
         .in('id', programIds)
         .eq('active', true)
         .order('grade')
+
+      if (progError) {
+        console.error('Error loading programs:', progError)
+      }
+      console.log('Programs data:', programsData)
 
       setPrograms((programsData as Program[]) || [])
     } catch (err) {

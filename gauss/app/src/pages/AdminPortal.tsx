@@ -893,7 +893,11 @@ export function AdminPortal() {
                           )}
 
                           {/* Student Status */}
-                          <div className="flex flex-wrap items-center gap-3 py-2 px-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Account Status
+                            </label>
+                            <div className="flex flex-wrap items-center gap-3 py-2 px-3 bg-gray-50 rounded-lg">
                             <span className="text-gray-600">
                               {student.username ? `@${student.username}` : student.email}
                             </span>
@@ -916,6 +920,7 @@ export function AdminPortal() {
                                 Password Set
                               </span>
                             )}
+                            </div>
                           </div>
 
                           {/* Teacher Assignment */}
