@@ -37,8 +37,8 @@ interface Question {
   id: string
   contest_question_number: number
   correct_answer: string
-  short_problem_summary: string | null
-  solution_text: string | null
+  question_text: string | null
+  official_solution: string | null
 }
 
 type ActiveView = 'dashboard' | 'students' | 'programs' | 'contests' | 'questions'
@@ -229,19 +229,25 @@ export function TeacherPortal() {
       const studentIds = assignments.map(a => a.student_id)
 
       // Get program assignments for these students
-      const { data: programAssignments, error: paError } = await supabase
-        .from('student_program_assignments')
-        .select('program_id')
-        .in('student_id', studentIds)
-        .eq('active', true)
+      // Query each student individually to work with RLS
+      let allProgramIds: string[] = []
+      for (const studentId of studentIds) {
+        const { data: pa, error: paError } = await supabase
+          .from('student_program_assignments')
+          .select('program_id')
+          .eq('student_id', studentId)
+          .eq('active', true)
 
-      if (paError) {
-        console.error('Error loading program assignments:', paError)
+        if (paError) {
+          console.error('Error loading program assignments for student:', studentId, paError)
+        }
+        const paData = pa as { program_id: string }[] | null
+        if (paData) {
+          allProgramIds.push(...paData.map(p => p.program_id))
+        }
       }
 
-      const paList = programAssignments as { program_id: string }[] | null
-      console.log('Program assignments:', paList)
-      const programIds = [...new Set(paList?.map(p => p.program_id) || [])]
+      const programIds = [...new Set(allProgramIds)]
       console.log('Program IDs:', programIds)
 
       if (programIds.length === 0) {
@@ -315,35 +321,52 @@ export function TeacherPortal() {
     setLoadingQuestions(true)
 
     try {
-      // Get questions for this contest
+      // Get questions for this contest with source info
       const { data: questionsData } = await supabase
         .from('gauss_questions')
-        .select('id, contest_question_number, correct_answer, short_problem_summary')
+        .select('id, contest_question_number, correct_answer, source_year, source_grade, source_question_number')
         .eq('contest_id', contest.id)
         .order('contest_question_number')
 
-      const questionsList = questionsData as { id: string; contest_question_number: number; correct_answer: string; short_problem_summary: string | null }[] | null
+      const questionsList = questionsData as {
+        id: string
+        contest_question_number: number
+        correct_answer: string
+        source_year: number | null
+        source_grade: number | null
+        source_question_number: number | null
+      }[] | null
 
-      // Get solutions for these questions
-      const questionIds = questionsList?.map(q => q.id) || []
-      let solutionsMap: Record<string, string | null> = {}
+      // Get source questions data
+      const questions: Question[] = []
+      for (const q of questionsList || []) {
+        let question_text: string | null = null
+        let official_solution: string | null = null
 
-      if (questionIds.length > 0) {
-        const { data: solutionsData } = await supabase
-          .from('gauss_solutions')
-          .select('question_id, psg_solution_text')
-          .in('question_id', questionIds)
+        if (q.source_year && q.source_grade && q.source_question_number) {
+          const { data: sourceData } = await supabase
+            .from('gauss_source_questions')
+            .select('question_text, official_solution')
+            .eq('year', q.source_year)
+            .eq('grade', q.source_grade)
+            .eq('question_number', q.source_question_number)
+            .single()
 
-        const solutions = solutionsData as { question_id: string; psg_solution_text: string | null }[] | null
-        solutions?.forEach(s => {
-          solutionsMap[s.question_id] = s.psg_solution_text
+          if (sourceData) {
+            const source = sourceData as { question_text: string | null; official_solution: string | null }
+            question_text = source.question_text
+            official_solution = source.official_solution
+          }
+        }
+
+        questions.push({
+          id: q.id,
+          contest_question_number: q.contest_question_number,
+          correct_answer: q.correct_answer,
+          question_text,
+          official_solution
         })
       }
-
-      const questions: Question[] = (questionsList || []).map(q => ({
-        ...q,
-        solution_text: solutionsMap[q.id] || null
-      }))
 
       setQuestions(questions)
     } catch (err) {
@@ -560,13 +583,16 @@ export function TeacherPortal() {
                 <span className="font-medium text-gray-800">Q{question.contest_question_number}</span>
                 <span className="text-sm font-medium text-green-600">Answer: {question.correct_answer}</span>
               </div>
-              {question.short_problem_summary && (
-                <p className="text-gray-700 mb-3">{question.short_problem_summary}</p>
+              {question.question_text && (
+                <div className="mb-3">
+                  <p className="text-sm font-medium text-gray-600 mb-1">Question:</p>
+                  <p className="text-gray-700 whitespace-pre-wrap">{question.question_text}</p>
+                </div>
               )}
-              {question.solution_text && (
+              {question.official_solution && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
-                  <p className="text-sm font-medium text-gray-600 mb-1">Solution:</p>
-                  <p className="text-gray-700 text-sm whitespace-pre-wrap">{question.solution_text}</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Official Solution:</p>
+                  <p className="text-gray-700 text-sm whitespace-pre-wrap">{question.official_solution}</p>
                 </div>
               )}
             </div>
