@@ -36,33 +36,55 @@ export function TeacherPortal() {
 
     setLoadingStudents(true)
 
-    const { data, error } = await supabase
-      .from('student_teacher_assignments')
-      .select(`
-        student_id,
-        assigned_at,
-        profiles!student_teacher_assignments_student_id_fkey (
-          id,
-          display_name,
-          username,
-          email,
-          login_type,
-          active,
-          must_change_password
-        )
-      `)
-      .eq('teacher_id', profile.id)
-      .eq('active', true)
-      .order('assigned_at', { ascending: false })
+    try {
+      // First get student assignments
+      const { data: assignments, error: assignError } = await supabase
+        .from('student_teacher_assignments')
+        .select('student_id, assigned_at')
+        .eq('teacher_id', profile.id)
+        .eq('active', true)
+        .order('assigned_at', { ascending: false })
 
-    if (!error && data) {
-      const studentList = data
-        .map((assignment: any) => ({
-          ...assignment.profiles,
-          assigned_at: assignment.assigned_at,
-        }))
-        .filter((student: Student | null) => student !== null)
+      if (assignError) {
+        console.error('Error loading assignments:', assignError)
+        setLoadingStudents(false)
+        return
+      }
+
+      if (!assignments || assignments.length === 0) {
+        setStudents([])
+        setLoadingStudents(false)
+        return
+      }
+
+      // Then get student profiles
+      const studentIds = assignments.map(a => a.student_id)
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, display_name, username, email, login_type, active, must_change_password')
+        .in('id', studentIds)
+
+      if (profileError) {
+        console.error('Error loading profiles:', profileError)
+        setLoadingStudents(false)
+        return
+      }
+
+      // Combine data
+      const studentList = assignments
+        .map(assignment => {
+          const studentProfile = profiles?.find(p => p.id === assignment.student_id)
+          if (!studentProfile) return null
+          return {
+            ...studentProfile,
+            assigned_at: assignment.assigned_at,
+          }
+        })
+        .filter((s): s is Student => s !== null)
+
       setStudents(studentList)
+    } catch (err) {
+      console.error('Error loading students:', err)
     }
 
     setLoadingStudents(false)
