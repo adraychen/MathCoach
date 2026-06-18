@@ -38,7 +38,7 @@ export function TeacherPortal() {
 
     try {
       // First get student assignments
-      const { data: assignments, error: assignError } = await supabase
+      const { data: assignmentsData, error: assignError } = await supabase
         .from('student_teacher_assignments')
         .select('student_id, assigned_at')
         .eq('teacher_id', profile.id)
@@ -51,6 +51,8 @@ export function TeacherPortal() {
         return
       }
 
+      const assignments = assignmentsData as { student_id: string; assigned_at: string }[] | null
+
       if (!assignments || assignments.length === 0) {
         setStudents([])
         setLoadingStudents(false)
@@ -59,7 +61,7 @@ export function TeacherPortal() {
 
       // Then get student profiles
       const studentIds = assignments.map(a => a.student_id)
-      const { data: profiles, error: profileError } = await supabase
+      const { data: profilesData, error: profileError } = await supabase
         .from('profiles')
         .select('id, display_name, username, email, login_type, active, must_change_password')
         .in('id', studentIds)
@@ -70,10 +72,20 @@ export function TeacherPortal() {
         return
       }
 
+      const profilesList = profilesData as {
+        id: string
+        display_name: string
+        username: string | null
+        email: string | null
+        login_type: string
+        active: boolean
+        must_change_password: boolean
+      }[] | null
+
       // Combine data
       const studentList = assignments
         .map(assignment => {
-          const studentProfile = profiles?.find(p => p.id === assignment.student_id)
+          const studentProfile = profilesList?.find(p => p.id === assignment.student_id)
           if (!studentProfile) return null
           return {
             ...studentProfile,
