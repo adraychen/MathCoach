@@ -23,6 +23,8 @@ interface Student {
   email: string
   username: string | null
   login_type: 'email' | 'username'
+  active: boolean
+  must_change_password: boolean
   teacher_id: string | null
   teacher_name: string | null
   programs: Program[]
@@ -333,12 +335,12 @@ export function AdminPortal() {
       // Load all students
       const { data: studentsData, error: studentsError } = await supabase
         .from('profiles')
-        .select('id, display_name, email, username, login_type')
+        .select('id, display_name, email, username, login_type, active, must_change_password')
         .eq('role', 'student')
         .order('display_name')
 
       if (studentsError) throw studentsError
-      const studentsRaw = studentsData as { id: string; display_name: string; email: string; username: string | null; login_type: 'email' | 'username' }[] | null
+      const studentsRaw = studentsData as { id: string; display_name: string; email: string; username: string | null; login_type: 'email' | 'username'; active: boolean; must_change_password: boolean }[] | null
 
       // Load student-teacher assignments
       const { data: teacherAssignments, error: taError } = await supabase
@@ -395,6 +397,8 @@ export function AdminPortal() {
           email: s.email,
           username: s.username,
           login_type: s.login_type,
+          active: s.active,
+          must_change_password: s.must_change_password,
           teacher_id: teacherId,
           teacher_name: teacherId && teacherMap[teacherId] ? teacherMap[teacherId].name : null,
           programs: programIds.map(pid => programMap[pid]).filter(Boolean)
@@ -887,6 +891,32 @@ export function AdminPortal() {
                               {editSuccess}
                             </div>
                           )}
+
+                          {/* Student Status */}
+                          <div className="flex flex-wrap items-center gap-3 py-2 px-3 bg-gray-50 rounded-lg">
+                            <span className="text-gray-600">
+                              {student.username ? `@${student.username}` : student.email}
+                            </span>
+                            <span className="text-gray-500 capitalize">{student.login_type}</span>
+                            {student.active ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                Inactive
+                              </span>
+                            )}
+                            {student.must_change_password ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                Must Change Password
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Password Set
+                              </span>
+                            )}
+                          </div>
 
                           {/* Teacher Assignment */}
                           <div>
