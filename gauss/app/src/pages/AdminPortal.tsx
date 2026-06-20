@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
-import { LogOut, Users, UserPlus, GraduationCap, BarChart3, X, Loader2, ChevronRight, Check } from 'lucide-react'
+import { LogOut, Users, UserPlus, GraduationCap, BarChart3, X, Loader2, ChevronRight, Check, BookOpen, ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react'
 
 interface Teacher {
   id: string
@@ -15,6 +15,23 @@ interface Program {
   program_code: string
   program_name: string
   grade: number
+}
+
+interface AdminProgram {
+  id: string
+  program_code: string
+  program_name: string
+  grade: number
+  active: boolean
+}
+
+interface AdminContest {
+  id: string
+  contest_code: string
+  title: string
+  grade: number
+  active: boolean
+  question_count: number
 }
 
 interface Student {
@@ -79,9 +96,19 @@ export function AdminPortal() {
   const [editError, setEditError] = useState('')
   const [editSuccess, setEditSuccess] = useState('')
 
+  // Programs Management state
+  const [showProgramsManagement, setShowProgramsManagement] = useState(false)
+  const [adminPrograms, setAdminPrograms] = useState<AdminProgram[]>([])
+  const [loadingAdminPrograms, setLoadingAdminPrograms] = useState(false)
+  const [expandedProgramId, setExpandedProgramId] = useState<string | null>(null)
+  const [programContests, setProgramContests] = useState<AdminContest[]>([])
+  const [loadingContests, setLoadingContests] = useState(false)
+  const [togglingContest, setTogglingContest] = useState<string | null>(null)
+
   const cards = [
     { title: 'Teachers', icon: Users, color: 'bg-blue-500', action: () => openTeachersList() },
     { title: 'Students', icon: GraduationCap, color: 'bg-green-500', action: () => openStudentsList() },
+    { title: 'Programs', icon: BookOpen, color: 'bg-indigo-500', action: () => openProgramsManagement() },
     { title: 'Create Teacher', icon: UserPlus, color: 'bg-purple-500', action: () => setShowCreateTeacher(true) },
     { title: 'Create Student', icon: UserPlus, color: 'bg-orange-500', action: () => openCreateStudent() },
     { title: 'Student Statistics', icon: BarChart3, color: 'bg-pink-500', action: () => {} },
@@ -505,6 +532,96 @@ export function AdminPortal() {
       setEditProgramIds(editProgramIds.filter(id => id !== programId))
     } else {
       setEditProgramIds([...editProgramIds, programId])
+    }
+  }
+
+  // Open Programs Management
+  const openProgramsManagement = async () => {
+    setShowProgramsManagement(true)
+    setLoadingAdminPrograms(true)
+    setExpandedProgramId(null)
+    setProgramContests([])
+
+    try {
+      const { data: programsData, error } = await supabase
+        .from('mathcoach_programs')
+        .select('id, program_code, program_name, grade, active')
+        .order('grade')
+        .order('program_code')
+
+      if (error) throw error
+      setAdminPrograms((programsData as AdminProgram[]) || [])
+    } catch (err) {
+      console.error('Error loading programs:', err)
+    } finally {
+      setLoadingAdminPrograms(false)
+    }
+  }
+
+  // Load contests for a program
+  const loadProgramContests = async (program: AdminProgram) => {
+    if (expandedProgramId === program.id) {
+      setExpandedProgramId(null)
+      setProgramContests([])
+      return
+    }
+
+    setExpandedProgramId(program.id)
+    setLoadingContests(true)
+
+    try {
+      // Get contests matching this program's code
+      const { data: contestsData } = await supabase
+        .from('gauss_contests')
+        .select('id, contest_code, title, grade, active')
+        .like('contest_code', `${program.program_code}%`)
+        .order('contest_code', { ascending: false })
+
+      const contestsList = contestsData as { id: string; contest_code: string; title: string; grade: number; active: boolean }[] | null
+
+      // Get question counts for each contest
+      const contestsWithCounts: AdminContest[] = []
+      for (const contest of contestsList || []) {
+        const { count } = await supabase
+          .from('gauss_questions')
+          .select('id', { count: 'exact', head: true })
+          .eq('contest_id', contest.id)
+
+        contestsWithCounts.push({
+          ...contest,
+          question_count: count || 0
+        })
+      }
+
+      setProgramContests(contestsWithCounts)
+    } catch (err) {
+      console.error('Error loading contests:', err)
+    } finally {
+      setLoadingContests(false)
+    }
+  }
+
+  // Toggle contest active status
+  const toggleContestActive = async (contest: AdminContest) => {
+    setTogglingContest(contest.id)
+
+    try {
+      const newActive = !contest.active
+      const { error } = await (supabase
+        .from('gauss_contests') as any)
+        .update({ active: newActive, updated_at: new Date().toISOString() })
+        .eq('id', contest.id)
+
+      if (error) throw error
+
+      // Update local state
+      setProgramContests(prev =>
+        prev.map(c => c.id === contest.id ? { ...c, active: newActive } : c)
+      )
+    } catch (err) {
+      console.error('Error toggling contest:', err)
+    } finally {
+      setTogglingContest(null)
     }
   }
 
@@ -993,6 +1110,123 @@ export function AdminPortal() {
                               Save Changes
                             </button>
                           </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Programs Management Modal */}
+      {showProgramsManagement && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-800">Programs & Contests</h2>
+              <button
+                onClick={() => { setShowProgramsManagement(false); setExpandedProgramId(null); }}
+                className="p-1 text-gray-500 hover:text-gray-700 rounded"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {loadingAdminPrograms ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 size={24} className="animate-spin text-indigo-500" />
+                </div>
+              ) : adminPrograms.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No programs found</p>
+              ) : (
+                <div className="space-y-3">
+                  {adminPrograms.map(program => (
+                    <div
+                      key={program.id}
+                      className="border border-gray-200 rounded-lg overflow-hidden"
+                    >
+                      {/* Program Row */}
+                      <div
+                        className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                        onClick={() => loadProgramContests(program)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-indigo-100 rounded-lg">
+                            <BookOpen size={20} className="text-indigo-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800">{program.program_name}</p>
+                            <p className="text-sm text-gray-500">
+                              {program.program_code} | Grade {program.grade}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {!program.active && (
+                            <span className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-600 rounded">
+                              Inactive
+                            </span>
+                          )}
+                          <ChevronDown
+                            size={20}
+                            className={`text-gray-400 transition-transform ${expandedProgramId === program.id ? 'rotate-180' : ''}`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Contests Panel */}
+                      {expandedProgramId === program.id && (
+                        <div className="p-4 bg-white border-t border-gray-200">
+                          {loadingContests ? (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 size={20} className="animate-spin text-indigo-500" />
+                            </div>
+                          ) : programContests.length === 0 ? (
+                            <p className="text-center text-gray-500 py-4">No contests found for this program</p>
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium text-gray-600 mb-3">
+                                Contests ({programContests.length})
+                              </p>
+                              {programContests.map(contest => (
+                                <div
+                                  key={contest.id}
+                                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                                >
+                                  <div>
+                                    <p className="font-medium text-gray-800">{contest.title}</p>
+                                    <p className="text-sm text-gray-500">
+                                      {contest.contest_code} | {contest.question_count} questions
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => toggleContestActive(contest)}
+                                    disabled={togglingContest === contest.id}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
+                                      contest.active
+                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                        : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                    }`}
+                                  >
+                                    {togglingContest === contest.id ? (
+                                      <Loader2 size={16} className="animate-spin" />
+                                    ) : contest.active ? (
+                                      <ToggleRight size={18} />
+                                    ) : (
+                                      <ToggleLeft size={18} />
+                                    )}
+                                    <span className="text-sm font-medium">
+                                      {contest.active ? 'Active' : 'Inactive'}
+                                    </span>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
