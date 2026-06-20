@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
-import { LogOut, Users, BookOpen, Loader2, ChevronRight, ArrowLeft } from 'lucide-react'
+import { LogOut, Users, BookOpen, Loader2, ChevronRight, ArrowLeft, FileText } from 'lucide-react'
 
 interface Student {
   id: string
@@ -43,7 +43,25 @@ interface Question {
   official_solution: string | null
 }
 
-type ActiveView = 'dashboard' | 'students' | 'programs' | 'contests' | 'questions'
+interface SourceYearGrade {
+  year: number
+  grade: number
+  question_count: number
+}
+
+interface SourceQuestion {
+  id: string
+  year: number
+  grade: number
+  question_number: number
+  correct_answer: string
+  question_text: string | null
+  options: Record<string, string> | null
+  visual_description: string | null
+  official_solution: string | null
+}
+
+type ActiveView = 'dashboard' | 'students' | 'programs' | 'contests' | 'questions' | 'solutions' | 'solution-questions'
 
 export function TeacherPortal() {
   const { profile, signOut } = useAuth()
@@ -68,9 +86,17 @@ export function TeacherPortal() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [loadingQuestions, setLoadingQuestions] = useState(false)
 
+  // Solutions state
+  const [sourceYearGrades, setSourceYearGrades] = useState<SourceYearGrade[]>([])
+  const [loadingSolutions, setLoadingSolutions] = useState(false)
+  const [selectedYearGrade, setSelectedYearGrade] = useState<SourceYearGrade | null>(null)
+  const [sourceQuestions, setSourceQuestions] = useState<SourceQuestion[]>([])
+  const [loadingSourceQuestions, setLoadingSourceQuestions] = useState(false)
+
   const cards = [
     { title: 'My Students', icon: Users, color: 'bg-blue-500', action: () => setActiveView('students') },
     { title: 'Programs', icon: BookOpen, color: 'bg-purple-500', action: () => setActiveView('programs') },
+    { title: 'Solutions', icon: FileText, color: 'bg-green-500', action: () => setActiveView('solutions') },
   ]
 
   useEffect(() => {
@@ -78,6 +104,8 @@ export function TeacherPortal() {
       loadStudents()
     } else if (activeView === 'programs' && profile?.id) {
       loadPrograms()
+    } else if (activeView === 'solutions') {
+      loadSolutions()
     }
   }, [activeView, profile?.id])
 
@@ -338,6 +366,44 @@ export function TeacherPortal() {
         source_grade: number | null
         source_question_number: number | null
       }[] | null
+
+      // If no questions in gauss_questions, try to load directly from gauss_source_questions
+      if (!questionsList || questionsList.length === 0) {
+        // Extract year and grade from contest_code (e.g., G7gauss2023 -> grade 7, year 2023)
+        const gradeMatch = contest.contest_code.match(/G(\d+)/)
+        const yearMatch = contest.contest_code.match(/(\d{4})$/)
+
+        if (gradeMatch && yearMatch) {
+          const grade = parseInt(gradeMatch[1])
+          const year = parseInt(yearMatch[1])
+
+          const { data: sourceData } = await supabase
+            .from('gauss_source_questions')
+            .select('id, question_number, correct_answer, question_text, options, visual_description, official_solution')
+            .eq('year', year)
+            .eq('grade', grade)
+            .order('question_number')
+
+          if (sourceData && sourceData.length > 0) {
+            const questions: Question[] = sourceData.map((s: any) => ({
+              id: s.id,
+              contest_question_number: s.question_number,
+              correct_answer: s.correct_answer,
+              question_text: s.question_text,
+              options: s.options,
+              visual_description: s.visual_description,
+              official_solution: s.official_solution
+            }))
+            setQuestions(questions)
+            setLoadingQuestions(false)
+            return
+          }
+        }
+
+        setQuestions([])
+        setLoadingQuestions(false)
+        return
+      }
 
       // Get source questions data
       const questions: Question[] = []
