@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
-import { LogOut, Users, BookOpen, Loader2, ChevronRight, ArrowLeft, FileText } from 'lucide-react'
+import { LogOut, Users, BookOpen, Loader2, ChevronRight, ArrowLeft } from 'lucide-react'
 
 interface Student {
   id: string
@@ -43,25 +43,7 @@ interface Question {
   official_solution: string | null
 }
 
-interface SourceYearGrade {
-  year: number
-  grade: number
-  question_count: number
-}
-
-interface SourceQuestion {
-  id: string
-  year: number
-  grade: number
-  question_number: number
-  correct_answer: string
-  question_text: string | null
-  options: Record<string, string> | null
-  visual_description: string | null
-  official_solution: string | null
-}
-
-type ActiveView = 'dashboard' | 'students' | 'programs' | 'contests' | 'questions' | 'solutions' | 'solution-questions'
+type ActiveView = 'dashboard' | 'students' | 'programs' | 'contests' | 'questions'
 
 export function TeacherPortal() {
   const { profile, signOut } = useAuth()
@@ -86,17 +68,9 @@ export function TeacherPortal() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [loadingQuestions, setLoadingQuestions] = useState(false)
 
-  // Solutions state
-  const [sourceYearGrades, setSourceYearGrades] = useState<SourceYearGrade[]>([])
-  const [loadingSolutions, setLoadingSolutions] = useState(false)
-  const [selectedYearGrade, setSelectedYearGrade] = useState<SourceYearGrade | null>(null)
-  const [sourceQuestions, setSourceQuestions] = useState<SourceQuestion[]>([])
-  const [loadingSourceQuestions, setLoadingSourceQuestions] = useState(false)
-
   const cards = [
     { title: 'My Students', icon: Users, color: 'bg-blue-500', action: () => setActiveView('students') },
     { title: 'Programs', icon: BookOpen, color: 'bg-purple-500', action: () => setActiveView('programs') },
-    { title: 'Solutions', icon: FileText, color: 'bg-green-500', action: () => setActiveView('solutions') },
   ]
 
   useEffect(() => {
@@ -104,8 +78,6 @@ export function TeacherPortal() {
       loadStudents()
     } else if (activeView === 'programs' && profile?.id) {
       loadPrograms()
-    } else if (activeView === 'solutions') {
-      loadSolutions()
     }
   }, [activeView, profile?.id])
 
