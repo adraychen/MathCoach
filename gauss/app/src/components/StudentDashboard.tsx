@@ -63,11 +63,12 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
     setError(null)
 
     try {
-      // Fetch contests filtered by program grade and type
+      // Fetch contests filtered by program grade and type (only active)
       const { data: contestsData, error: contestsError } = await supabase
         .from('gauss_contests')
         .select('*')
         .eq('grade', program.grade)
+        .eq('active', true)
         .order('display_order', { ascending: true })
 
       if (contestsError) throw contestsError
