@@ -737,23 +737,119 @@ Assignment tracking fields:
 
 ## Topic Performance Tracking
 
-Student performance should be calculated by joining:
+Student performance is calculated by joining `gauss_attempts` → `gauss_questions` and aggregating by topic.
 
-```text
-gauss_attempts
-→ gauss_questions
-→ primary_topics / secondary_topics
+### Topic Structure
+
+Each question can have multiple topics:
+
+- **Primary Topics** (`primary_topics`): Main mathematical concepts tested (e.g., "Geometry and Measurement", "Number Sense")
+- **Secondary Topics** (`secondary_topics`): Specific skills within primary topics (e.g., "Angles", "Fractions/Ratios", "Counting")
+
+Example:
+```json
+{
+  "primary_topics": ["Geometry and Measurement", "Algebra and Equations"],
+  "secondary_topics": ["Angles", "Equations Solving", "Measurement"]
+}
 ```
 
-This supports analytics by:
+### How Multi-Topic Questions Are Counted
 
-- Primary topic
-- Secondary topic
-- Accuracy
-- Wrong count
-- Skipped count
-- Flagged count
-- Time spent
+When a question has multiple topics (e.g., both "Geometry" and "Algebra"):
+
+- If student answers **correctly** → each topic gets +1 correct, +1 attempted
+- If student answers **wrong** → each topic gets +1 wrong, +1 attempted
+
+This is fair because the question tests both skills equally.
+
+### Performance Calculation
+
+Accuracy rate per topic:
+```
+accuracy_rate = correct_count / attempted_count
+```
+
+The views filter to only include questions where:
+- `is_correct IS NOT NULL` (question was answered)
+- Topic array is not empty
+
+### Database Views
+
+| View | Purpose |
+|---|---|
+| `gauss_student_primary_topic_performance` | Student accuracy by primary topic |
+| `gauss_student_secondary_topic_performance` | Student accuracy by secondary topic |
+
+View columns:
+- `user_id` - Student ID
+- `primary_topic` or `secondary_topic` - Topic name
+- `attempted_count` - Total questions attempted with this topic
+- `correct_count` - Correct answers
+- `wrong_count` - Wrong answers
+- `accuracy_rate` - Decimal 0.00-1.00 (multiply by 100 for percentage)
+
+### Student Dashboard Usage
+
+The student dashboard shows:
+
+1. **Strongest Topics** - Top 3 topics by accuracy rate (highest first)
+2. **Topics to Improve** - Bottom 3 topics by accuracy rate (lowest first)
+
+Filtering rules:
+- Only topics with at least 2 attempts are shown (to avoid noise from single questions)
+- Topics are sorted by accuracy rate
+
+Example display:
+```
+Strongest Topics:
+  Geometry and Measurement    85%
+  Number Sense                 80%
+  Counting and Probability     75%
+
+Topics to Improve:
+  Algebra and Equations        40%
+  Data Analysis                45%
+  Other                        50%
+```
+
+### Using Secondary Topics for Drill-Down
+
+Secondary topics provide more specific insight:
+
+```
+Primary: "Geometry and Measurement" (60% accuracy)
+  Secondary breakdown:
+    - Angles: 80%
+    - Area: 70%
+    - Quadrilaterals: 45% ← needs practice
+    - Perimeter: 40% ← needs practice
+```
+
+This helps identify specific skills to improve within a broader topic area.
+
+### Available Primary Topics
+
+```
+Algebra and Equations
+Counting and Probability
+Data Analysis
+Geometry and Measurement
+Number Sense
+Other
+```
+
+### Available Secondary Topics
+
+```
+Angles, Area, Averages, Circles, Coordinate Geometry, Counting,
+Decimals, Digits, Divisibility, Equations Solving, Exponents,
+Expressions, Factoring, Fractions/Ratios, Games, Graphs,
+Inequalities, Logic, Measurement, Operations, Optimization,
+Patterning/Sequences/Series, Percentages, Perimeter, Polygons,
+Prime Numbers, Prisms, Probability, Quadrilaterals, Rates,
+Surface Area, Transformations, Triangles, Trigonometry, Volume
+```
 
 Do not duplicate topic fields into attempts unless needed later for denormalized reporting.
 
