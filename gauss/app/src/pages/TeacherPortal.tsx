@@ -618,7 +618,7 @@ export function TeacherPortal() {
               {question.official_solution && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <p className="text-sm font-medium text-gray-600 mb-1">Official Solution:</p>
-                  <p className="text-gray-700 text-sm whitespace-pre-wrap">{question.official_solution}</p>
+                  <pre className="text-gray-700 text-sm whitespace-pre-wrap font-mono">{question.official_solution}</pre>
                 </div>
               )}
             </div>
