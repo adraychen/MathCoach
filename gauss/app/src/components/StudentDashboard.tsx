@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { UserHeader } from './UserHeader'
-import { ContestSelection } from './ContestSelection'
 import { PracticeScreen } from './PracticeScreen'
-import { BookOpen, Play, PlayCircle, List, Loader2, Home, ChevronDown, ChevronUp, Check } from 'lucide-react'
-import type { Contest, ContestSession, DashboardStats, TopicPerformance, Program } from '../types/database'
+import { BookOpen, Play, PlayCircle, Loader2, Home, CheckCircle, Clock, Circle } from 'lucide-react'
+import type { Contest, ContestSession, TopicPerformance, Program } from '../types/database'
 
-type View = 'dashboard' | 'contest-selection' | 'contest'
+type View = 'dashboard' | 'contest'
 
 interface ContestRow {
   id: string
@@ -44,11 +43,9 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
   const [selectedContestCode, setSelectedContestCode] = useState<string | null>(null)
   const [contests, setContests] = useState<Contest[]>([])
   const [sessions, setSessions] = useState<ContestSession[]>([])
-  const [stats, setStats] = useState<DashboardStats | null>(null)
   const [allTopics, setAllTopics] = useState<TopicPerformance[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showContestList, setShowContestList] = useState(false)
 
   useEffect(() => {
     if (user?.id && program?.id) {
@@ -110,54 +107,6 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
       }))
       setSessions(mappedSessions)
 
-      // Calculate stats
-      const completedSessions = mappedSessions.filter(s => s.status === 'completed')
-      const inProgressSessions = mappedSessions.filter(s => s.status === 'in_progress')
-      const uniqueContestsStarted = new Set(mappedSessions.map(s => s.contest_id)).size
-
-      let totalCorrect = 0
-      let totalWrong = 0
-      let totalSkipped = 0
-      let totalFlagged = 0
-      let totalScore = 0
-
-      mappedSessions.forEach(s => {
-        totalCorrect += s.correct_count
-        totalWrong += s.wrong_count
-        totalSkipped += s.skipped_count
-        totalFlagged += s.flagged_count
-        if (s.status === 'completed' && s.score !== null) {
-          totalScore += s.score
-        }
-      })
-
-      // Average score: total score / (completed contests * 150 max points) * 100
-      // Max score per contest: Part A (50) + Part B (60) + Part C (40) = 150
-      const maxPossibleScore = completedSessions.length * 150
-      const averageScore = maxPossibleScore > 0
-        ? Math.round((totalScore / maxPossibleScore) * 100)
-        : 0
-
-      // Find current in-progress contest
-      let currentInProgress: string | null = null
-      if (inProgressSessions.length > 0) {
-        const inProgressContestId = inProgressSessions[0].contest_id
-        const contest = contestsList.find(c => c.id === inProgressContestId)
-        currentInProgress = contest?.title || null
-      }
-
-      setStats({
-        contestsStarted: uniqueContestsStarted,
-        contestsCompleted: completedSessions.length,
-        totalContests: contestsList.length,
-        currentInProgress,
-        totalCorrect,
-        totalWrong,
-        totalSkipped,
-        totalFlagged,
-        averageScore,
-      })
-
       // Fetch topic performance
       try {
         const { data: topicData, error: topicError } = await (supabase
@@ -192,35 +141,6 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
     }
   }
 
-  const handleStartContest = () => {
-    // Find the first contest that isn't completed
-    const completedContestIds = new Set(
-      sessions.filter(s => s.status === 'completed').map(s => s.contest_id)
-    )
-
-    const nextContest = contests.find(c => !completedContestIds.has(c.id))
-
-    if (nextContest) {
-      setSelectedContestCode(nextContest.contest_code)
-      setView('contest')
-    } else if (contests.length > 0) {
-      // All completed - start the first one again
-      setSelectedContestCode(contests[0].contest_code)
-      setView('contest')
-    }
-  }
-
-  const handleContinueContest = () => {
-    const inProgressSession = sessions.find(s => s.status === 'in_progress')
-    if (inProgressSession) {
-      const contest = contests.find(c => c.id === inProgressSession.contest_id)
-      if (contest) {
-        setSelectedContestCode(contest.contest_code)
-        setView('contest')
-      }
-    }
-  }
-
   const handleSelectContest = (contestCode: string) => {
     setSelectedContestCode(contestCode)
     setView('contest')
@@ -241,18 +161,6 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
           onBack={handleBackToDashboard}
         />
       </div>
-    )
-  }
-
-  // Contest selection view
-  if (view === 'contest-selection') {
-    return (
-      <ContestSelection
-        contests={contests}
-        sessions={sessions}
-        onSelect={handleSelectContest}
-        onBack={() => setView('dashboard')}
-      />
     )
   }
 
@@ -279,7 +187,40 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
     )
   }
 
-  const hasInProgressContest = sessions.some(s => s.status === 'in_progress')
+  // Helper to get contest status
+  const getContestStatus = (contestId: string) => {
+    const session = sessions.find(s => s.contest_id === contestId)
+    if (!session) return 'not_started'
+    if (session.status === 'completed') return 'completed'
+    if (session.status === 'in_progress') return 'in_progress'
+    return 'not_started'
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return (
+          <span className="flex items-center gap-1 text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
+            <CheckCircle size={12} />
+            Completed
+          </span>
+        )
+      case 'in_progress':
+        return (
+          <span className="flex items-center gap-1 text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full">
+            <Clock size={12} />
+            In Progress
+          </span>
+        )
+      default:
+        return (
+          <span className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
+            <Circle size={12} />
+            Not Started
+          </span>
+        )
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -313,119 +254,84 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <button
-            onClick={handleStartContest}
-            disabled={contests.length === 0}
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            <Play size={20} />
-            <span className="font-medium">Start Contest</span>
-          </button>
+        {/* Contests and Topics */}
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Contests Panel - Left Half */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Contests</h3>
 
-          <button
-            onClick={handleContinueContest}
-            disabled={!hasInProgressContest}
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            <PlayCircle size={20} />
-            <span className="font-medium">Continue Contest</span>
-          </button>
-
-          <button
-            onClick={() => setView('contest-selection')}
-            disabled={contests.length === 0}
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            <List size={20} />
-            <span className="font-medium">Select Contest</span>
-          </button>
-        </div>
-
-        {/* Dashboard Stats and Topics */}
-        {stats && (
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Your Progress Panel - Left Half */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Progress</h3>
-
-              <button
-                onClick={() => setShowContestList(!showContestList)}
-                className="w-full text-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {stats.contestsCompleted} / {stats.totalContests}
-                  </div>
-                  {showContestList ? (
-                    <ChevronUp size={20} className="text-blue-600" />
-                  ) : (
-                    <ChevronDown size={20} className="text-blue-600" />
-                  )}
-                </div>
-                <div className="text-xs text-blue-700">Contests Completed</div>
-              </button>
-
-              {showContestList && (
-                <div className="mt-3 space-y-1 max-h-48 overflow-y-auto">
-                  {contests.map((contest) => {
-                    const isCompleted = sessions.some(
-                      s => s.contest_id === contest.id && s.status === 'completed'
-                    )
-                    return (
-                      <div
-                        key={contest.id}
-                        className={`flex items-center justify-between p-2 rounded text-sm ${
-                          isCompleted ? 'bg-green-50' : 'bg-gray-50'
-                        }`}
-                      >
-                        <span className={isCompleted ? 'text-green-700' : 'text-gray-600'}>
-                          {contest.title}
-                        </span>
-                        {isCompleted && (
-                          <Check size={16} className="text-green-600" />
+            {contests.length > 0 ? (
+              <div className="space-y-3">
+                {contests.map((contest) => {
+                  const status = getContestStatus(contest.id)
+                  return (
+                    <div
+                      key={contest.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-gray-800 truncate">
+                            {contest.title}
+                          </span>
+                        </div>
+                        {getStatusBadge(status)}
+                      </div>
+                      <div className="ml-3 flex-shrink-0">
+                        {status === 'in_progress' ? (
+                          <button
+                            onClick={() => handleSelectContest(contest.contest_code)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                          >
+                            <PlayCircle size={14} />
+                            Continue
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleSelectContest(contest.contest_code)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                          >
+                            <Play size={14} />
+                            {status === 'completed' ? 'Retry' : 'Start'}
+                          </button>
                         )}
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Topic Performance Panel - Right Half */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Topic Performance</h3>
-
-              {allTopics.length > 0 ? (
-                <ul className="space-y-2">
-                  {allTopics.map((t, i) => (
-                    <li key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-700">{t.topic}</span>
-                      <span className={`font-medium ${
-                        t.accuracy_rate >= 0.7 ? 'text-green-600' :
-                        t.accuracy_rate >= 0.4 ? 'text-yellow-600' : 'text-orange-600'
-                      }`}>
-                        {Math.round(t.accuracy_rate * 100)}%
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500 text-sm text-center">
-                  Topic performance will appear after you answer more questions.
-                </p>
-              )}
-            </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm text-center">
+                No contests available yet.
+              </p>
+            )}
           </div>
-        )}
 
-        {/* No contests fallback */}
-        {contests.length === 0 && (
-          <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center text-gray-500">
-            No contests are available yet.
+          {/* Topic Performance Panel - Right Half */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Topic Performance</h3>
+
+            {allTopics.length > 0 ? (
+              <ul className="space-y-2">
+                {allTopics.map((t, i) => (
+                  <li key={i} className="flex justify-between text-sm">
+                    <span className="text-gray-700">{t.topic}</span>
+                    <span className={`font-medium ${
+                      t.accuracy_rate >= 0.7 ? 'text-green-600' :
+                      t.accuracy_rate >= 0.4 ? 'text-yellow-600' : 'text-orange-600'
+                    }`}>
+                      {Math.round(t.accuracy_rate * 100)}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-500 text-sm text-center">
+                Topic performance will appear after you answer more questions.
+              </p>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
