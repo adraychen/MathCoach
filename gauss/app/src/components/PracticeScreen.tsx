@@ -69,6 +69,7 @@ interface AttemptRow {
   wrong_answers: string[] | null
   flagged: boolean | null
   skipped: boolean | null
+  coaching_used: boolean | null
 }
 
 interface ContestScreenProps {
@@ -292,6 +293,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
             status: 'unanswered',
             wrong_answers: [],
             flagged: false,
+            coaching_used: false,
           })
         })
 
@@ -312,6 +314,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
                 status: (attempt.status as QuestionState['status']) || 'unanswered',
                 wrong_answers: (attempt.wrong_answers || []) as AnswerChoice[],
                 flagged: attempt.flagged || false,
+                coaching_used: attempt.coaching_used || false,
               })
             }
           })
@@ -371,6 +374,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
           wrong_answers: state.wrong_answers,
           flagged: state.flagged,
           skipped: state.status === 'skipped',
+          coaching_used: state.coaching_used,
           attempted_at: new Date().toISOString(),
         })
         .eq('id', existing.id)
@@ -394,6 +398,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
           wrong_answers: state.wrong_answers,
           flagged: state.flagged,
           skipped: state.status === 'skipped',
+          coaching_used: state.coaching_used,
           attempted_at: new Date().toISOString(),
         })
 
@@ -462,6 +467,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
         status: 'unanswered' as const,
         wrong_answers: [],
         flagged: false,
+        coaching_used: false,
       }
     : null
 
@@ -733,6 +739,7 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
         status: 'unanswered',
         wrong_answers: [],
         flagged: false,
+        coaching_used: false,
       })
     })
     setQuestionStates(resetStates)
@@ -751,16 +758,33 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
     setPdfPage(page)
   }
 
-  const toggleCoaching = () => {
-    setCoachingOpen((prev) => {
-      // When manually opening, use stuck mode
-      if (!prev) {
-        setCoachingMode('stuck')
-        setWrongAnswerForCoaching(null)
+  const toggleCoaching = useCallback(async () => {
+    const wasOpen = coachingOpen
+
+    if (!wasOpen && currentQuestion) {
+      // Opening coaching - mark as used
+      setCoachingMode('stuck')
+      setWrongAnswerForCoaching(null)
+
+      const prevState = questionStates.get(currentQuestion.id)
+      if (prevState && !prevState.coaching_used) {
+        const newState: QuestionState = {
+          ...prevState,
+          coaching_used: true,
+        }
+
+        setQuestionStates((prev) => {
+          const newStates = new Map(prev)
+          newStates.set(currentQuestion.id, newState)
+          return newStates
+        })
+
+        await saveAttempt(currentQuestion.id, newState)
       }
-      return !prev
-    })
-  }
+    }
+
+    setCoachingOpen(!wasOpen)
+  }, [coachingOpen, currentQuestion, questionStates, saveAttempt])
 
   if (loading) {
     return (

@@ -260,6 +260,7 @@ export interface QuestionState {
   status: QuestionStatus
   wrong_answers: AnswerChoice[]
   flagged: boolean
+  coaching_used: boolean
 }
 
 export interface ContestProgress {

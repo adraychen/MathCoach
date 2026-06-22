@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth'
 import { UserHeader } from './UserHeader'
 import { ContestSelection } from './ContestSelection'
 import { PracticeScreen } from './PracticeScreen'
-import { BookOpen, Play, PlayCircle, List, CheckCircle, XCircle, SkipForward, Loader2, Home } from 'lucide-react'
+import { BookOpen, Play, PlayCircle, List, Loader2, Home, ChevronDown, ChevronUp, Check } from 'lucide-react'
 import type { Contest, ContestSession, DashboardStats, TopicPerformance, Program } from '../types/database'
 
 type View = 'dashboard' | 'contest-selection' | 'contest'
@@ -48,6 +48,7 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
   const [allTopics, setAllTopics] = useState<TopicPerformance[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showContestList, setShowContestList] = useState(false)
 
   useEffect(() => {
     if (user?.id && program?.id) {
@@ -349,30 +350,47 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Progress</h3>
 
-              <div className="text-center p-4 bg-blue-50 rounded-lg mb-4">
-                <div className="text-2xl font-bold text-blue-600">
-                  {stats.contestsCompleted} / {stats.totalContests}
+              <button
+                onClick={() => setShowContestList(!showContestList)}
+                className="w-full text-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {stats.contestsCompleted} / {stats.totalContests}
+                  </div>
+                  {showContestList ? (
+                    <ChevronUp size={20} className="text-blue-600" />
+                  ) : (
+                    <ChevronDown size={20} className="text-blue-600" />
+                  )}
                 </div>
                 <div className="text-xs text-blue-700">Contests Completed</div>
-              </div>
+              </button>
 
-              <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                <div className="flex flex-col items-center gap-1 p-2 bg-green-50 rounded">
-                  <CheckCircle size={16} className="text-green-600" />
-                  <span className="font-medium text-green-700">{stats.totalCorrect}</span>
-                  <span className="text-xs text-green-600">Correct</span>
+              {showContestList && (
+                <div className="mt-3 space-y-1 max-h-48 overflow-y-auto">
+                  {contests.map((contest) => {
+                    const isCompleted = sessions.some(
+                      s => s.contest_id === contest.id && s.status === 'completed'
+                    )
+                    return (
+                      <div
+                        key={contest.id}
+                        className={`flex items-center justify-between p-2 rounded text-sm ${
+                          isCompleted ? 'bg-green-50' : 'bg-gray-50'
+                        }`}
+                      >
+                        <span className={isCompleted ? 'text-green-700' : 'text-gray-600'}>
+                          {contest.title}
+                        </span>
+                        {isCompleted && (
+                          <Check size={16} className="text-green-600" />
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-                <div className="flex flex-col items-center gap-1 p-2 bg-red-50 rounded">
-                  <XCircle size={16} className="text-red-600" />
-                  <span className="font-medium text-red-700">{stats.totalWrong}</span>
-                  <span className="text-xs text-red-600">Wrong</span>
-                </div>
-                <div className="flex flex-col items-center gap-1 p-2 bg-yellow-50 rounded">
-                  <SkipForward size={16} className="text-yellow-600" />
-                  <span className="font-medium text-yellow-700">{stats.totalSkipped}</span>
-                  <span className="text-xs text-yellow-600">Skipped</span>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Topic Performance Panel - Right Half */}
