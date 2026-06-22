@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth'
 import { UserHeader } from './UserHeader'
 import { ContestSelection } from './ContestSelection'
 import { PracticeScreen } from './PracticeScreen'
-import { BookOpen, Play, PlayCircle, List, CheckCircle, XCircle, SkipForward, Flag, TrendingUp, TrendingDown, Loader2, Home } from 'lucide-react'
+import { BookOpen, Play, PlayCircle, List, CheckCircle, XCircle, SkipForward, Loader2, Home } from 'lucide-react'
 import type { Contest, ContestSession, DashboardStats, TopicPerformance, Program } from '../types/database'
 
 type View = 'dashboard' | 'contest-selection' | 'contest'
@@ -45,8 +45,7 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
   const [contests, setContests] = useState<Contest[]>([])
   const [sessions, setSessions] = useState<ContestSession[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [strongTopics, setStrongTopics] = useState<TopicPerformance[]>([])
-  const [weakTopics, setWeakTopics] = useState<TopicPerformance[]>([])
+  const [allTopics, setAllTopics] = useState<TopicPerformance[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -149,6 +148,7 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
       setStats({
         contestsStarted: uniqueContestsStarted,
         contestsCompleted: completedSessions.length,
+        totalContests: contestsList.length,
         currentInProgress,
         totalCorrect,
         totalWrong,
@@ -173,14 +173,11 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
             accuracy_rate: parseFloat(t.accuracy_rate) || 0,
           }))
 
-          // Filter topics with at least 2 attempts
+          // Filter topics with at least 2 attempts and sort from strongest to weakest
           const significantTopics = topics.filter(t => t.attempted_count >= 2)
-
-          // Sort by accuracy rate
           const sorted = [...significantTopics].sort((a, b) => b.accuracy_rate - a.accuracy_rate)
 
-          setStrongTopics(sorted.slice(0, 3))
-          setWeakTopics(sorted.slice(-3).reverse())
+          setAllTopics(sorted)
         }
       } catch {
         // Topic views may not exist yet - that's okay
@@ -345,104 +342,63 @@ export function StudentDashboard({ program, onBackToPrograms }: StudentDashboard
           </button>
         </div>
 
-        {/* Dashboard Stats */}
+        {/* Dashboard Stats and Topics */}
         {stats && (
-          <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Progress</h3>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{stats.contestsStarted}</div>
-                <div className="text-xs text-blue-700">Contests Started</div>
-              </div>
-
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">{stats.contestsCompleted}</div>
-                <div className="text-xs text-purple-700">Completed</div>
-              </div>
-
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{stats.totalCorrect}</div>
-                <div className="text-xs text-green-700">Total Correct</div>
-              </div>
-
-              <div className="text-center p-3 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-600">{stats.averageScore}%</div>
-                <div className="text-xs text-orange-700">Average Score</div>
-              </div>
-            </div>
-
-            {stats.currentInProgress && (
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  <span className="font-medium">In Progress:</span> {stats.currentInProgress}
-                </p>
-              </div>
-            )}
-
-            <div className="mt-4 grid grid-cols-4 gap-2 text-center text-sm">
-              <div className="flex items-center justify-center gap-1 text-green-600">
-                <CheckCircle size={14} />
-                <span>{stats.totalCorrect}</span>
-              </div>
-              <div className="flex items-center justify-center gap-1 text-red-600">
-                <XCircle size={14} />
-                <span>{stats.totalWrong}</span>
-              </div>
-              <div className="flex items-center justify-center gap-1 text-yellow-600">
-                <SkipForward size={14} />
-                <span>{stats.totalSkipped}</span>
-              </div>
-              <div className="flex items-center justify-center gap-1 text-orange-600">
-                <Flag size={14} />
-                <span>{stats.totalFlagged}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Topic Performance */}
-        {(strongTopics.length > 0 || weakTopics.length > 0) && (
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {strongTopics.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <TrendingUp size={18} className="text-green-600" />
-                  <h4 className="font-semibold text-gray-800">Strongest Topics</h4>
+            {/* Your Progress Panel - Left Half */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Progress</h3>
+
+              <div className="text-center p-4 bg-blue-50 rounded-lg mb-4">
+                <div className="text-2xl font-bold text-blue-600">
+                  {stats.contestsCompleted} / {stats.totalContests}
                 </div>
+                <div className="text-xs text-blue-700">Contests Completed</div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                <div className="flex flex-col items-center gap-1 p-2 bg-green-50 rounded">
+                  <CheckCircle size={16} className="text-green-600" />
+                  <span className="font-medium text-green-700">{stats.totalCorrect}</span>
+                  <span className="text-xs text-green-600">Correct</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 p-2 bg-red-50 rounded">
+                  <XCircle size={16} className="text-red-600" />
+                  <span className="font-medium text-red-700">{stats.totalWrong}</span>
+                  <span className="text-xs text-red-600">Wrong</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 p-2 bg-yellow-50 rounded">
+                  <SkipForward size={16} className="text-yellow-600" />
+                  <span className="font-medium text-yellow-700">{stats.totalSkipped}</span>
+                  <span className="text-xs text-yellow-600">Skipped</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Topic Performance Panel - Right Half */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Topic Performance</h3>
+
+              {allTopics.length > 0 ? (
                 <ul className="space-y-2">
-                  {strongTopics.map((t, i) => (
+                  {allTopics.map((t, i) => (
                     <li key={i} className="flex justify-between text-sm">
                       <span className="text-gray-700">{t.topic}</span>
-                      <span className="text-green-600 font-medium">{Math.round(t.accuracy_rate * 100)}%</span>
+                      <span className={`font-medium ${
+                        t.accuracy_rate >= 0.7 ? 'text-green-600' :
+                        t.accuracy_rate >= 0.4 ? 'text-yellow-600' : 'text-orange-600'
+                      }`}>
+                        {Math.round(t.accuracy_rate * 100)}%
+                      </span>
                     </li>
                   ))}
                 </ul>
-              </div>
-            )}
-
-            {weakTopics.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <TrendingDown size={18} className="text-orange-600" />
-                  <h4 className="font-semibold text-gray-800">Topics to Improve</h4>
-                </div>
-                <ul className="space-y-2">
-                  {weakTopics.map((t, i) => (
-                    <li key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-700">{t.topic}</span>
-                      <span className="text-orange-600 font-medium">{Math.round(t.accuracy_rate * 100)}%</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-
-        {strongTopics.length === 0 && weakTopics.length === 0 && stats && stats.totalCorrect + stats.totalWrong > 0 && (
-          <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-center text-gray-500 text-sm">
-            Topic performance will appear after you answer more questions.
+              ) : (
+                <p className="text-gray-500 text-sm text-center">
+                  Topic performance will appear after you answer more questions.
+                </p>
+              )}
+            </div>
           </div>
         )}
 

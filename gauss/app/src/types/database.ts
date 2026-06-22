@@ -193,6 +193,7 @@ export interface ContestWithSession extends Contest {
 export interface DashboardStats {
   contestsStarted: number
   contestsCompleted: number
+  totalContests: number
   currentInProgress: string | null
   totalCorrect: number
   totalWrong: number
