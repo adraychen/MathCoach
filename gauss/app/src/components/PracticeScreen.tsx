@@ -893,6 +893,8 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
               contestQuestionNumber={currentQuestion.contest_question_number}
               coachingMode={coachingMode}
               selectedAnswer={wrongAnswerForCoaching}
+              sessionId={sessionId}
+              questionId={currentQuestion.id}
             />
           </div>
           {/* Progress Indicator - Bottom of right panel */}

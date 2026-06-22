@@ -13,6 +13,8 @@ interface CoachingPanelProps {
   contestQuestionNumber: number
   coachingMode?: CoachingMode
   selectedAnswer?: string | null
+  sessionId?: string | null
+  questionId?: string | null
 }
 
 interface ChatMessage {
@@ -36,6 +38,8 @@ export function CoachingPanel({
   contestQuestionNumber,
   coachingMode = 'stuck',
   selectedAnswer = null,
+  sessionId = null,
+  questionId = null,
 }: CoachingPanelProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +51,35 @@ export function CoachingPanel({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const coachingAvailable = solution?.coaching_available ?? false
+
+  // Log coaching message to database
+  const logCoachingMessage = async (
+    role: 'coach' | 'student',
+    message: string,
+    mode: CoachingMode,
+    stage?: string,
+    wrongAnswer?: string | null
+  ) => {
+    if (!sessionId || !questionId) return
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      await (supabase.from('gauss_coaching_logs') as any).insert({
+        session_id: sessionId,
+        question_id: questionId,
+        user_id: user.id,
+        role,
+        message,
+        coaching_mode: mode,
+        stage: stage || null,
+        selected_answer: wrongAnswer || null,
+      })
+    } catch (err) {
+      console.error('Failed to log coaching message:', err)
+    }
+  }
 
   // Format math expressions in coach messages
   const formatMathText = (text: string): string => {
@@ -170,6 +203,8 @@ export function CoachingPanel({
 
       if (result.coach_message) {
         setMessages(prev => [...prev, { role: 'coach', content: result.coach_message! }])
+        // Log coach message
+        logCoachingMessage('coach', result.coach_message, coachingMode, result.stage, wrongAnswer)
       }
     } catch (err) {
       setError('Network error. Please try again.')
@@ -187,6 +222,9 @@ export function CoachingPanel({
 
     setMessages(prev => [...prev, studentMessage])
     setStudentInput('')
+
+    // Log student message
+    logCoachingMessage('student', trimmedInput, coachingMode, 'followup', null)
 
     // Follow-up always uses 'followup' trigger regardless of initial mode
     await fetchCoaching('followup', trimmedInput, historyBeforeStudentMessage, null)
