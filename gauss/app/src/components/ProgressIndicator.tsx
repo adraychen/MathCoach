@@ -1,15 +1,14 @@
 import { useState } from 'react'
-import { Flag, CheckCircle, SkipForward, Send } from 'lucide-react'
+import { CheckCircle, SkipForward, Send } from 'lucide-react'
 import type { ContestProgress } from '../types/database'
 
 interface ProgressIndicatorProps {
   progress: ContestProgress
-  onReviewFlagged: () => void
   onComplete: () => void
   isCompleting?: boolean
 }
 
-export function ProgressIndicator({ progress, onReviewFlagged, onComplete, isCompleting }: ProgressIndicatorProps) {
+export function ProgressIndicator({ progress, onComplete, isCompleting }: ProgressIndicatorProps) {
   const [showConfirm, setShowConfirm] = useState(false)
 
   const handleCompleteClick = () => {
@@ -39,24 +38,9 @@ export function ProgressIndicator({ progress, onReviewFlagged, onComplete, isCom
               <span>{progress.skipped} skipped</span>
             </span>
           )}
-          {progress.flagged > 0 && (
-            <span className="flex items-center gap-1">
-              <Flag size={14} className="text-orange-500" />
-              <span>{progress.flagged} flagged</span>
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
-          {progress.flagged > 0 && (
-            <button
-              onClick={onReviewFlagged}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-orange-600 bg-orange-50 rounded hover:bg-orange-100 transition-colors"
-            >
-              <Flag size={12} />
-              Review flagged
-            </button>
-          )}
           <button
             onClick={handleCompleteClick}
             disabled={isCompleting}

@@ -1,14 +1,13 @@
-import { CheckCircle, XCircle, SkipForward, Flag, RotateCcw } from 'lucide-react'
+import { CheckCircle, XCircle, SkipForward, RotateCcw } from 'lucide-react'
 import type { ContestProgress } from '../types/database'
 
 interface SummaryPanelProps {
   progress: ContestProgress
   onRestart: () => void
-  onReviewFlagged: () => void
   onReviewWrong: () => void
 }
 
-export function SummaryPanel({ progress, onRestart, onReviewFlagged, onReviewWrong }: SummaryPanelProps) {
+export function SummaryPanel({ progress, onRestart, onReviewWrong }: SummaryPanelProps) {
   const scorePercent = progress.total > 0
     ? Math.round((progress.correct / progress.total) * 100)
     : 0
@@ -30,7 +29,7 @@ export function SummaryPanel({ progress, onRestart, onReviewFlagged, onReviewWro
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
           <CheckCircle size={20} className="text-green-500" />
           <div>
@@ -54,28 +53,10 @@ export function SummaryPanel({ progress, onRestart, onReviewFlagged, onReviewWro
             <div className="text-xs text-yellow-600">Skipped</div>
           </div>
         </div>
-
-        <div className="flex items-center gap-2 p-3 bg-orange-50 rounded-lg">
-          <Flag size={20} className="text-orange-500" />
-          <div>
-            <div className="text-lg font-semibold text-orange-700">{progress.flagged}</div>
-            <div className="text-xs text-orange-600">Flagged</div>
-          </div>
-        </div>
       </div>
 
       {/* Action Buttons */}
       <div className="space-y-2">
-        {progress.flagged > 0 && (
-          <button
-            onClick={onReviewFlagged}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-orange-700 bg-orange-100 rounded-lg hover:bg-orange-200 transition-colors"
-          >
-            <Flag size={16} />
-            Review {progress.flagged} flagged question{progress.flagged > 1 ? 's' : ''}
-          </button>
-        )}
-
         {progress.wrong > 0 && (
           <button
             onClick={onReviewWrong}

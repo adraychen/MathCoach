@@ -1,4 +1,4 @@
-import { Flag, SkipForward, X, ChevronLeft, ChevronRight, ThumbsUp } from 'lucide-react'
+import { SkipForward, X, ChevronLeft, ChevronRight, ThumbsUp, FastForward } from 'lucide-react'
 import type { AnswerChoice, QuestionState } from '../types/database'
 
 interface AnswerCardProps {
@@ -7,12 +7,13 @@ interface AnswerCardProps {
   questionState: QuestionState
   onSelectAnswer: (answer: AnswerChoice) => void
   onSkip: () => void
-  onFlag: () => void
+  onNextSkipped: () => void
   onPrevious: () => void
   onNext: () => void
   canGoPrevious: boolean
   canGoNext: boolean
   showCorrectAnimation?: boolean
+  skippedCount: number
 }
 
 const ANSWER_CHOICES: AnswerChoice[] = ['A', 'B', 'C', 'D', 'E']
@@ -23,14 +24,15 @@ export function AnswerCard({
   questionState,
   onSelectAnswer,
   onSkip,
-  onFlag,
+  onNextSkipped,
   onPrevious,
   onNext,
   canGoPrevious,
   canGoNext,
   showCorrectAnimation = false,
+  skippedCount,
 }: AnswerCardProps) {
-  const { status, wrong_answers, flagged } = questionState
+  const { status, wrong_answers } = questionState
   const isWrong = status === 'wrong'
   const isCorrect = status === 'correct'
   const isAnswered = isCorrect || isWrong
@@ -97,9 +99,6 @@ export function AnswerCard({
           >
             <ChevronRight size={18} />
           </button>
-          {flagged && (
-            <Flag size={14} className="text-orange-500 ml-1" fill="currentColor" />
-          )}
         </div>
 
         {/* Middle: Answer choices */}
@@ -123,7 +122,7 @@ export function AnswerCard({
           ))}
         </div>
 
-        {/* Right: Skip and Flag buttons */}
+        {/* Right: Skip and Next Skipped buttons */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={onSkip}
@@ -134,18 +133,16 @@ export function AnswerCard({
             <SkipForward size={14} />
             Skip
           </button>
-          <button
-            onClick={onFlag}
-            className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              flagged
-                ? 'text-orange-700 bg-orange-100 hover:bg-orange-200'
-                : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
-            }`}
-            aria-label="Flag for review"
-          >
-            <Flag size={14} />
-            Flag
-          </button>
+          {skippedCount > 0 && (
+            <button
+              onClick={onNextSkipped}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-yellow-700 bg-yellow-100 rounded-lg hover:bg-yellow-200 transition-colors"
+              aria-label="Go to next skipped question"
+            >
+              <FastForward size={14} />
+              Skipped ({skippedCount})
+            </button>
+          )}
         </div>
       </div>
     </div>

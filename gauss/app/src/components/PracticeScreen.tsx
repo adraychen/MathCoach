@@ -88,8 +88,9 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
   const [error, setError] = useState<string | null>(null)
   const [pdfPage, setPdfPage] = useState(1)
   const [showSummary, setShowSummary] = useState(false)
-  const [noFlaggedMessage, setNoFlaggedMessage] = useState(false)
   const [showCorrectAnimation, setShowCorrectAnimation] = useState(false)
+  const [noSkippedMessage, setNoSkippedMessage] = useState(false)
+  const [lastSkippedIndex, setLastSkippedIndex] = useState(-1)
   const [isCompleting, setIsCompleting] = useState(false)
 
   // Session tracking
@@ -640,47 +641,28 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
     await goToNextQuestion()
   }, [currentQuestion, questionStates, saveAttempt, updateSessionCounts, goToNextQuestion])
 
-  const handleFlag = useCallback(async () => {
-    if (!currentQuestion) return
+  const handleNextSkipped = useCallback(() => {
+    // Find skipped questions
+    const skippedIndices = questions
+      .map((q, idx) => ({ idx, state: questionStates.get(q.id) }))
+      .filter(item => item.state?.status === 'skipped')
+      .map(item => item.idx)
 
-    const currentFlagged = questionStates.get(currentQuestion.id)?.flagged || false
-    const prevState = questionStates.get(currentQuestion.id)!
-
-    const newState: QuestionState = {
-      ...prevState,
-      flagged: !currentFlagged,
-      status: !currentFlagged ? 'flagged' : prevState.status === 'flagged' ? 'unanswered' : prevState.status,
+    if (skippedIndices.length === 0) {
+      setNoSkippedMessage(true)
+      setTimeout(() => setNoSkippedMessage(false), 2000)
+      return
     }
 
-    setQuestionStates((prev) => {
-      const newStates = new Map(prev)
-      newStates.set(currentQuestion.id, newState)
-      updateSessionCounts(newStates)
-      return newStates
-    })
-
-    await saveAttempt(currentQuestion.id, newState)
-
-    // Only auto-advance if flagging (not unflagging)
-    if (!currentFlagged) {
-      await goToNextQuestion()
+    // Find next skipped after lastSkippedIndex, or wrap to first
+    let nextIndex = skippedIndices.find(idx => idx > lastSkippedIndex)
+    if (nextIndex === undefined) {
+      nextIndex = skippedIndices[0] // Wrap to first skipped
     }
-  }, [currentQuestion, questionStates, saveAttempt, updateSessionCounts, goToNextQuestion])
 
-  const handleReviewFlagged = useCallback(() => {
-    // Find first flagged question
-    const flaggedIndex = questions.findIndex(q =>
-      questionStates.get(q.id)?.flagged === true
-    )
-
-    if (flaggedIndex >= 0) {
-      goToQuestion(flaggedIndex)
-      setNoFlaggedMessage(false)
-    } else {
-      setNoFlaggedMessage(true)
-      setTimeout(() => setNoFlaggedMessage(false), 2000)
-    }
-  }, [questions, questionStates, goToQuestion])
+    setLastSkippedIndex(nextIndex)
+    goToQuestion(nextIndex)
+  }, [questions, questionStates, lastSkippedIndex, goToQuestion])
 
   const handleReviewWrong = useCallback(() => {
     // Find first question that had wrong attempts
@@ -808,7 +790,6 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
         <SummaryPanel
           progress={progress}
           onRestart={handleRestart}
-          onReviewFlagged={handleReviewFlagged}
           onReviewWrong={handleReviewWrong}
         />
       </div>
@@ -850,12 +831,13 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
             questionState={currentState}
             onSelectAnswer={handleSelectAnswer}
             onSkip={handleSkip}
-            onFlag={handleFlag}
+            onNextSkipped={handleNextSkipped}
             onPrevious={goToPreviousQuestion}
             onNext={goToNextQuestion}
             canGoPrevious={currentQuestionIndex > 0}
             canGoNext={currentQuestionIndex < questions.length - 1}
             showCorrectAnimation={showCorrectAnimation}
+            skippedCount={progress.skipped}
           />
         </div>
       </div>
@@ -893,13 +875,12 @@ export function PracticeScreen({ contestCode, onBack }: ContestScreenProps) {
           <div className="flex-shrink-0 relative">
             <ProgressIndicator
               progress={progress}
-              onReviewFlagged={handleReviewFlagged}
               onComplete={handleCompleteContest}
               isCompleting={isCompleting}
             />
-            {noFlaggedMessage && (
+            {noSkippedMessage && (
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-3 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-10">
-                No flagged questions yet.
+                No skipped questions.
               </div>
             )}
           </div>
