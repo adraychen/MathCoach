@@ -91,12 +91,9 @@ export function LoginScreen() {
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            Gauss AI Coach
+          <h1 className="text-2xl font-bold text-gray-800">
+            AI Math Coach
           </h1>
-          <p className="text-gray-600">
-            Sign in to start practicing
-          </p>
         </div>
 
         {/* Login Form */}

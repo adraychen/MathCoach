@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import { LoginScreen } from './components/LoginScreen'
 import { ResetPasswordScreen } from './components/ResetPasswordScreen'
+import { ForcePasswordChangeScreen } from './components/ForcePasswordChangeScreen'
 import { AdminPortal } from './pages/AdminPortal'
 import { TeacherPortal } from './pages/TeacherPortal'
 import { ProgramSelection } from './components/ProgramSelection'
@@ -45,6 +46,13 @@ function ErrorScreen({ message }: { message: string }) {
 
 function AppContent() {
   const { user, profile, profileStatus, loading } = useAuth()
+  const [passwordChanged, setPasswordChanged] = useState(false)
+
+  const handlePasswordChanged = useCallback(() => {
+    setPasswordChanged(true)
+    // Reload the page to refresh the profile
+    window.location.reload()
+  }, [])
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -83,6 +91,11 @@ function AppContent() {
   // Route based on role
   if (!profile) {
     return <ErrorScreen message="Your account profile is not set up. Please contact the administrator." />
+  }
+
+  // Force password change if required
+  if (profile.must_change_password && !passwordChanged) {
+    return <ForcePasswordChangeScreen onPasswordChanged={handlePasswordChanged} />
   }
 
   switch (profile.role) {
