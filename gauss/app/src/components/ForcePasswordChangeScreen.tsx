@@ -49,8 +49,8 @@ export function ForcePasswordChangeScreen({ onPasswordChanged }: ForcePasswordCh
 
     if (user) {
       // Update must_change_password flag in profile
-      const { error: profileError } = await supabase
-        .from('profiles')
+      const { error: profileError } = await (supabase
+        .from('profiles') as any)
         .update({ must_change_password: false })
         .eq('id', user.id)
 
