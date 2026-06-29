@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { BookOpen, Loader2 } from 'lucide-react'
+import { UserHeader } from './UserHeader'
+import { BookOpen, Loader2, Home } from 'lucide-react'
 import type { Program } from '../types/database'
 
 interface ProgramRow {
@@ -111,13 +112,32 @@ export function ProgramSelection({ onSelect }: ProgramSelectionProps) {
 
   if (programs.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-sm border border-gray-200">
-          <BookOpen size={48} className="text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">No Programs Assigned</h2>
-          <p className="text-gray-600">
-            You have not been assigned to any programs yet. Please contact your teacher or administrator.
-          </p>
+      <div className="min-h-screen bg-gray-100">
+        <div className="max-w-2xl mx-auto p-4">
+          {/* Header with home button and user info */}
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={() => fetchAssignedPrograms()}
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors bg-white border border-gray-200"
+              aria-label="Home"
+              title="Refresh programs"
+            >
+              <Home size={20} className="text-gray-600" />
+            </button>
+            <div className="flex-1">
+              <UserHeader />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center mt-20">
+            <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-sm border border-gray-200">
+              <BookOpen size={48} className="text-gray-400 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">No Programs Assigned</h2>
+              <p className="text-gray-600">
+                You have not been assigned to any programs yet. Please contact your teacher or administrator.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -127,7 +147,22 @@ export function ProgramSelection({ onSelect }: ProgramSelectionProps) {
   // This UI shows when there are multiple programs
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="max-w-2xl mx-auto p-6">
+      <div className="max-w-2xl mx-auto p-4">
+        {/* Header with home button and user info */}
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => fetchAssignedPrograms()}
+            className="p-2 hover:bg-gray-200 rounded-lg transition-colors bg-white border border-gray-200"
+            aria-label="Home"
+            title="Refresh programs"
+          >
+            <Home size={20} className="text-gray-600" />
+          </button>
+          <div className="flex-1">
+            <UserHeader />
+          </div>
+        </div>
+
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Select Program</h1>
           <p className="text-gray-600">Choose a program to continue</p>
